@@ -6,9 +6,9 @@
     "default": {
 
       "properties": {
-        "albedoTex": "file:/content/textures/default_albedo_8x8.png",
+        "albedoTex": "file:/content/textures/default_1k_albedo.jpg",
         "normalTex": "file:/content/textures/default_normal_8x8.png",
-        "metalRoughnessAoTex": "file:/content/textures/default_metal_rough_8x8.png"
+        "metalRoughnessAoTex": "file:/content/textures/default_1k_ORM.jpg"
       },
 
       "shaders": [

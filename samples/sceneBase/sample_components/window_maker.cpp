@@ -271,11 +271,7 @@ namespace nau::sample
         if (!lights.empty())
         {
             scene::DirectionalLightComponent* lightComponent = lights[0]->as<scene::DirectionalLightComponent*>();
-            ImGui::Begin("LightControl");
-
-            static float color[3] = {1,1,1};
-            ImGui::ColorPicker3("LightColor", color);
-            lightComponent->setColor({color[0], color[1], color[2]});
+            ImGui::Begin("DirectionalLightControl");
 
             static float intensity = 1;
             ImGui::SliderFloat("Intensity", &intensity, 0, 10);
@@ -322,6 +318,10 @@ namespace nau::sample
                     env->setTextureAsset(panoramaTex);
                 }
             }
+
+            static float color[3] = {1,1,1};
+            ImGui::ColorPicker3("LightColor", color);
+            lightComponent->setColor({color[0], color[1], color[2]});
 
             ImGui::End();
         }

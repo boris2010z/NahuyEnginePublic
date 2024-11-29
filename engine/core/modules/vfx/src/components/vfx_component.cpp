@@ -4,6 +4,7 @@
 #include "vfx_component.h"
 #include "nau/vfx_manager.h"
 #include "../scene/scene_manager.h"
+#include "nau/io/virtual_file_system.h"
 
 namespace nau::vfx
 {
@@ -32,13 +33,19 @@ namespace nau::vfx
             m_vfxInstance = std::static_pointer_cast<modfx::VFXModFXInstance>(getServiceProvider().get<VFXManager>().addInstance(defaultMaterial));
             m_isVFXInScene = true;
 
-            TextureAssetRef assetRef = AssetPath{"file:/content/textures/default.jpg"};
-            auto texAsset = co_await assetRef.getReloadableAssetViewTyped<TextureAssetView>();
-            m_vfxInstance->setTexture(texAsset);
+            if (m_blk.load(resolvePath(m_assetPath).c_str()))
+            {
+                m_vfxInstance->deserialize(&m_blk);
 
-            nau::DataBlock blk;
-            if (blk.load(m_assetPath.c_str()))
-                m_vfxInstance->deserialize(&blk);
+                TextureAssetRef assetRef = AssetPath{m_blk.getStr("texture", "file:/content/textures/default.jpg")};
+                auto texAsset = co_await assetRef.getReloadableAssetViewTyped<TextureAssetView>();
+                if (texAsset)
+                {
+                    m_vfxInstance->setTexture(texAsset);
+                }
+
+                forcePositionUpdate();
+            }
         }
     }
 
@@ -63,13 +70,13 @@ namespace nau::vfx
     void VFXComponent::setAssetPath(const eastl::string& assetPath)
     {
         m_assetPath = assetPath;
-        
+        m_cachedAssetPath = resolvePath(m_assetPath);
+
         if (!m_vfxInstance)
             return;
 
-        nau::DataBlock blk;
-        if (blk.load(m_assetPath.c_str()))
-            m_vfxInstance->deserialize(&blk);
+        if (m_blk.load(m_cachedAssetPath.c_str()))
+            m_vfxInstance->deserialize(&m_blk);
     }
 
     void VFXComponent::forceUpdateTexture(ReloadableAssetView::Ptr texture)
@@ -79,14 +86,31 @@ namespace nau::vfx
 
     void VFXComponent::forceBLKUpdate()
     {
-        if (!m_vfxInstance || m_assetPath.empty())
+        if (!m_vfxInstance || m_cachedAssetPath.empty())
             return;
 
-        nau::DataBlock blk;
-        if (blk.load(m_assetPath.c_str()))
-            m_vfxInstance->deserialize(&blk);
-
-        auto pos = getWorldTransform().getMatrix().getTranslation();
-        m_vfxInstance->setTransform(getWorldTransform().getMatrix());
+        if (m_blk.load(m_cachedAssetPath.c_str()))
+            m_vfxInstance->deserialize(&m_blk);
     }
+
+    void VFXComponent::forcePositionUpdate()
+    {
+        auto pos = getWorldTransform().getMatrix().getTranslation();
+        if (m_vfxInstance)
+            m_vfxInstance->setTransform(getWorldTransform().getMatrix());
+    }
+
+    std::filesystem::path VFXComponent::dbPath()
+    {
+        auto& vfs = getServiceProvider().get<io::IVirtualFileSystem>();
+        auto projectPath = std::filesystem::path(vfs.resolveToNativePath("/content")).parent_path();
+
+        return std::filesystem::path(projectPath) / "assets_database";
+    }
+
+    eastl::string VFXComponent::resolvePath(const eastl::string& assetPath)
+    {
+        return eastl::string((dbPath().string() + "\\" + assetPath.c_str()).c_str());
+    }
+
 }  // namespace nau::physics

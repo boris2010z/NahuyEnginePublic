@@ -16,6 +16,7 @@ namespace nau::scene
 
         NAU_CLASS_FIELDS(
             CLASS_NAMED_FIELD(m_texture, "texture"),
+            CLASS_NAMED_FIELD(m_isVisible, "visibility"),
             CLASS_NAMED_FIELD(m_screenPercentageSize, "screenPercentageSize"),
         )
 
@@ -26,12 +27,16 @@ namespace nau::scene
         void setScreenPercentageSize(float newScreenPercSize);
         float getScreenPercentageSize();
 
+        void setVisibility(bool isVisible);
+        bool getVisibility() const;
+
         bool isTextureDirty() const;
         void resetIsTextureDirty();
 
     private:
         mutable nau::TextureAssetRef m_texture;
         mutable float m_screenPercentageSize;
+        mutable bool m_isVisible = true;
         bool isBillboardTextureDirty;
     };
 }  // namespace nau

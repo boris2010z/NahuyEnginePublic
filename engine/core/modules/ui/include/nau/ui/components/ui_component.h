@@ -32,7 +32,7 @@ namespace nau::ui
         )
 
         NAU_CLASS_FIELDS(
-            CLASS_NAMED_FIELD(m_uiAssetPath, "uiAssetPath"),
+            CLASS_NAMED_FIELD(m_uiAssetPath, "uiAssetName"),
             CLASS_NAMED_FIELD(m_width, "canvasWidth"),
             CLASS_NAMED_FIELD(m_height, "canvasHeight"),
         )

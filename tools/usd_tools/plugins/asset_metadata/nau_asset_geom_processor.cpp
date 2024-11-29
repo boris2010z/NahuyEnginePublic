@@ -90,7 +90,7 @@ PXR_NS::UsdPrim NauAssetGeomGenerator::generate(PXR_NS::UsdPrim source, PXR_NS::
         auto ignoreAnimation = false;
         auto generateLods = false;
         auto generateCollider = false;
-        auto generateTangents = false;
+        auto generateTangents = true;
         auto flipU = false;
         auto flipV = false;
 
@@ -153,8 +153,7 @@ const nau::MetaArgs& NauAssetGeomGenerator::getDefaultArgs() const
         {"ignoreAnimation"_tftoken, PXR_NS::VtValue(false)},
         {"generateLods"_tftoken, PXR_NS::VtValue(false)},
         {"generateCollider"_tftoken, PXR_NS::VtValue(false)},
-        {"generateTangents"_tftoken, PXR_NS::VtValue(false)},
-        {"generateTangents"_tftoken, PXR_NS::VtValue(false)},
+        {"generateTangents"_tftoken, PXR_NS::VtValue(true)},
         {"flipU"_tftoken, PXR_NS::VtValue(false)},
         {"flipV"_tftoken, PXR_NS::VtValue(false)}
     };

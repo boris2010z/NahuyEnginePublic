@@ -13,9 +13,9 @@
           0.5
         ],
 
-        "albedoTex": "file:/content/textures/rusted_pbr/rusted_albedo_ao.png",
-        "normalTex": "file:/content/textures/rusted_pbr/rusted_normals.png",
-        "metalRoughnessAoTex": "file:/content/textures/rusted_pbr/rusted_metallic_roughness.png"
+        "albedoTex": "file:/content/textures/default_1k_albedo.jpg",
+        "normalTex": "file:/content/textures/default_normal_8x8.png",
+        "metalRoughnessAoTex": "file:/content/textures/default_1k_ORM.jpg"
       },
 
       "shaders": [
@@ -46,9 +46,9 @@
           0.0
         ],
 
-        "albedoTex": "file:/content/textures/rusted_pbr/rusted_albedo_ao.png",
-        "normalTex": "file:/content/textures/rusted_pbr/rusted_normals.png",
-        "metalRoughnessAoTex": "file:/content/textures/rusted_pbr/rusted_metallic_roughness.png"
+        "albedoTex": "file:/content/textures/default_1k_albedo.jpg",
+        "normalTex": "file:/content/textures/default_normal_8x8.png",
+        "metalRoughnessAoTex": "file:/content/textures/default_1k_ORM.jpg"
       },
 
       "shaders": [

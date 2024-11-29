@@ -9,6 +9,7 @@
 #include "nau/scene/components/component_life_cycle.h"
 #include "nau/scene/internal/component_factory.h"
 #include "nau/service/service_provider.h"
+#include "nau/scene/scene_factory.h"
 
 namespace nau::scene
 {
@@ -121,6 +122,12 @@ namespace nau::scene
     ActivationState SceneObject::getActivationState() const
     {
         return getServiceProvider().get<SceneManagerImpl>().getSceneObjectActivationState(*this);
+    }
+
+    SceneObject::Ptr SceneObject::clone()
+    {
+        SceneAsset::Ptr prefabAsset = scene::wrapSceneObjectAsAsset(*this);
+        return getServiceProvider().get<scene::ISceneFactory>().createSceneObjectFromAsset(*prefabAsset);
     }
 
     const SceneComponent& SceneObject::getRootComponentInternal() const

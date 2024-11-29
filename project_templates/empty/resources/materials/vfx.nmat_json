@@ -3,8 +3,8 @@
   "pipelines": {
     "default": {
       "properties": {
-        "columns": 1,
-        "rows": 1,
+        "frames_y": 1,
+        "frames_x": 1,
         "tex": "file:/content/textures/sample_smoke_soft.png"
       },
       "shaders": [

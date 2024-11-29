@@ -24,6 +24,7 @@ namespace nau::render
         alignas(16) float4 boxR1;
         alignas(16) float4 boxR2;
         alignas(16) float4 posRelToOrigin_cullRadius;
+        bool debugDraw = false;
         OmniLight()
         {
         }
@@ -31,11 +32,13 @@ namespace nau::render
                   const Color3& col,
                   float rad,
                   float att,
-                  float intensity) :
+                  float intensity,
+                  bool debugDraw) :
             pos_radius(p.x, p.y, p.z, rad),
             color_atten(col.r * intensity, col.g * intensity, col.b * intensity, att),
             dir__tex_scale(0, 1, 0, 0),
-            posRelToOrigin_cullRadius(0, 0, 0, -1)
+            posRelToOrigin_cullRadius(0, 0, 0, -1),
+            debugDraw(debugDraw)
         {
             setDefaultBox();
         }
@@ -44,11 +47,13 @@ namespace nau::render
                   float rad,
                   float att,
                   float intensity,
-                  const float4x4& box) :
+                  const float4x4& box,
+                  bool debugDraw) :
             pos_radius(p.x, p.y, p.z, rad),
             color_atten(col.r * intensity, col.g * intensity, col.b * intensity, att),
             dir__tex_scale(0, 1, 0, 0),
-            posRelToOrigin_cullRadius(0, 0, 0, -1)
+            posRelToOrigin_cullRadius(0, 0, 0, -1),
+            debugDraw(debugDraw)
         {
             setBox(box);
         }
@@ -57,11 +62,13 @@ namespace nau::render
                   float rad,
                   float att,
                   float intensity,
-                  const float4x4* box) :
+                  const float4x4* box,
+                  bool debugDraw) :
             pos_radius(p.x, p.y, p.z, rad),
             color_atten(col.r * intensity, col.g * intensity, col.b * intensity, att),
             dir__tex_scale(0, 1, 0, 0),
-            posRelToOrigin_cullRadius(0, 0, 0, -1)
+            posRelToOrigin_cullRadius(0, 0, 0, -1),
+            debugDraw(debugDraw)
         {
             if (box != nullptr && lengthSqr(box->getCol(0)) > 0)
                 setBox(*box);
@@ -76,11 +83,13 @@ namespace nau::render
                   float intensity,
                   int tex,
                   float texture_scale,
-                  bool tex_rotation) :
+                  bool tex_rotation,
+                  bool debugDraw) :
             pos_radius(p.x, p.y, p.z, rad),
             color_atten(col.r * intensity, col.g * intensity, col.b * intensity, att),
             dir__tex_scale(dir.x, dir.y, dir.z, 0.f),
-            posRelToOrigin_cullRadius(0, 0, 0, -1)
+            posRelToOrigin_cullRadius(0, 0, 0, -1),
+            debugDraw(debugDraw)
         {
             setDefaultBox();
             setTexture(tex, texture_scale, tex_rotation);
@@ -94,11 +103,13 @@ namespace nau::render
                   int tex,
                   float texture_scale,
                   bool tex_rotation,
-                  const float4x4& box) :
+                  const float4x4& box,
+                  bool debugDraw) :
             pos_radius(p.x, p.y, p.z, rad),
             color_atten(col.r * intensity, col.g * intensity, col.b * intensity, att),
             dir__tex_scale(dir.x, dir.y, dir.z, 0.f),
-            posRelToOrigin_cullRadius(0, 0, 0, -1)
+            posRelToOrigin_cullRadius(0, 0, 0, -1),
+            debugDraw(debugDraw)
         {
             setBox(box);
             setTexture(tex, texture_scale, tex_rotation);

@@ -38,8 +38,9 @@ namespace UsdTranslator
         nau::scene::ISceneFactory& sceneFactory = nau::getServiceProvider().get<nau::scene::ISceneFactory>();
         auto child = sceneFactory.createSceneObject<nau::audio::AudioComponentEmitter>();
         m_obj = *child;
+        auto result = co_await dest->attachChildAsync(std::move(child));
         co_await update();
-        co_return co_await dest->attachChildAsync(std::move(child));
+        co_return result;
     }
 
     nau::scene::ObjectWeakRef<nau::scene::SceneObject> AudioEmitterAdapter::getSceneObject() const
@@ -70,12 +71,7 @@ namespace UsdTranslator
         if (const eastl::string uidString = sdfPathContainer.GetAssetPath().c_str(); !uidString.empty())
         {
             const auto uid = *nau::Uid::parseString(uidString.substr(4).c_str());
-            auto& assetDb = nau::getServiceProvider().get<nau::IAssetDB>();
-            const auto USDPath = assetDb.findAssetMetaInfoByUid(uid).nausdPath;
-
-            std::filesystem::path metaPath = nau::FileSystemExtensions::resolveToNativePathContentFolder(USDPath.c_str());
-            const std::string sourcePath = nau::FileSystemExtensions::resolveToNativePathContentFolder(metaPath.replace_extension().string());
-            component->path = eastl::string(sourcePath.c_str());
+            component->containerAssetUid = uid;
         }
 
         return nau::async::Task<>::makeResolved();

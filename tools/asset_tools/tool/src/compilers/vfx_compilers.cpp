@@ -33,12 +33,77 @@
 
 namespace nau::compilers
 {
-    namespace convert
+    // TODO True VFX compiler
+    nau::Result<AssetMetaInfo> UsdVFXCompiler::compile(
+        PXR_NS::UsdStageRefPtr stage,
+        const std::string& outputPath,
+        const std::string& projectRootPath,
+        const nau::UsdMetaInfo& metaInfo,
+        int folderIndex)
     {
-        void mapPrimToBLK(const UsdProxy::UsdProxyPrim& prim, nau::DataBlock* blk)
+        AssetDatabaseManager& dbManager = AssetDatabaseManager::instance();
+        NAU_ASSERT(dbManager.isLoaded(), "Asset database not loaded!");
+
+        auto rootPrim = stage->GetPrimAtPath(pxr::SdfPath("/Root/VFX"));
+        if (!rootPrim) {
+            return NauMakeError("Can't load source stage from '{}'", metaInfo.assetPath);
+        }
+
+        auto proxyPrim = UsdProxy::UsdProxyPrim(rootPrim);
+
+        std::string stringUID;
+        auto uidProperty = proxyPrim.getProperty(pxr::TfToken("uid"));
+        if (uidProperty)
+        {
+            pxr::VtValue val;
+            uidProperty->getValue(&val);
+
+            if (val.IsHolding<std::string>())
+            {
+                stringUID = val.Get<std::string>();
+            }
+        }
+
+        AssetMetaInfo nvfxMeta;
+        const std::string relativeSourcePath = FileSystemExtensions::getRelativeAssetPath(metaInfo.assetPath, false).string();
+        const std::string sourcePath = std::format("{}", relativeSourcePath.c_str());
+
+        auto id = dbManager.findIf(sourcePath);
+
+        if (id.isError() && !stringUID.empty())
+        {
+            id = Uid::parseString(stringUID);
+        }
+
+        const std::filesystem::path out = std::filesystem::path(outputPath) / std::to_string(folderIndex);
+        std::string fileName = toString(*id) + ".nvfx";
+
+        nvfxMeta.uid = *id;
+        nvfxMeta.dbPath = (out.filename() / fileName).string().c_str();
+        nvfxMeta.sourcePath = sourcePath.c_str();
+        nvfxMeta.nausdPath = (sourcePath + ".nausd").c_str();
+        nvfxMeta.dirty = false;
+        nvfxMeta.kind = "VFX";
+
+        auto last_write_time = std::filesystem::last_write_time(metaInfo.assetPath);
+        
+        auto sctp = std::chrono::time_point_cast<std::chrono::system_clock::duration>(
+            last_write_time - decltype(last_write_time)::clock::now() + std::chrono::system_clock::now());
+        std::time_t cftime = std::chrono::system_clock::to_time_t(sctp);
+
+        nvfxMeta.lastModified = cftime;
+
+        auto outFilePath = utils::compilers::ensureOutputPath(outputPath, nvfxMeta, "");
+
+        auto sourceStage = pxr::UsdStage::Open(metaInfo.assetPath);
+        pxr::UsdPrim vfxPrim = sourceStage->GetPrimAtPath(pxr::SdfPath("/VFX"));
+        UsdProxy::UsdProxyPrim vfxProxyPrim = UsdProxy::UsdProxyPrim(vfxPrim);
+
+        auto mapPrimToBLK = [&dbManager](const UsdProxy::UsdProxyPrim& prim, nau::DataBlock* blk)
         {
             blk->addStr("primName", prim.getName().GetText());
             blk->addStr("primType", prim.getType().GetText());
+            blk->addPoint3("position", nau::math::Vector3::zero());
 
             for (const auto& prop : prim.getProperties())
             {
@@ -99,72 +164,32 @@ namespace nau::compilers
                         blk->addIPoint2(propertyName.c_str(), nau::math::IVector2(vec2i[0], vec2i[1]));
                     }
                 }
+                else if (typeName == pxr::SdfValueTypeNames->Asset)
+                {
+                    std::string pathToTexture = "file:/content/textures/default.jpg";
+                    pxr::VtValue value;
+                    if (prop.second->getValue(&value))
+                    {
+                        pxr::SdfAssetPath texturePath = value.Get<pxr::SdfAssetPath>();
+                        auto textureUID = texturePath.GetAssetPath();
+                        if (textureUID.starts_with("uid:") && textureUID.size() >= 4)
+                        {
+                            textureUID.erase(0, 4);
+                            auto textureInfo = dbManager.get(*Uid::parseString(textureUID));
+                            pathToTexture = ("file:/content/" + textureInfo->sourcePath + "." + textureInfo->sourceType).c_str();
+                        }
+                    }
+                    blk->addStr("texture", pathToTexture.c_str());
+                }
                 else
                 {
                     NAU_LOG_ERROR("Unsupported attribute type. VFX asset compiler");
                 }
             }
-        }
-    }
+        };
 
-    // TODO True VFX compiler
-    nau::Result<AssetMetaInfo> UsdVFXCompiler::compile(
-        PXR_NS::UsdStageRefPtr stage,
-        const std::string& outputPath,
-        const std::string& projectRootPath,
-        const nau::UsdMetaInfo& metaInfo,
-        int folderIndex)
-    {
-        AssetDatabaseManager& dbManager = AssetDatabaseManager::instance();
-        NAU_ASSERT(dbManager.isLoaded(), "Asset database not loaded!");
-
-        auto rootPrim = stage->GetPrimAtPath(pxr::SdfPath("/Root/VFX"));
-        if (!rootPrim) {
-            return NauMakeError("Can't load source stage from '{}'", metaInfo.assetPath);
-        }
-
-        auto proxyPrim = UsdProxy::UsdProxyPrim(rootPrim);
-
-        std::string stringUID;
-        auto uidProperty = proxyPrim.getProperty(pxr::TfToken("uid"));
-        if (uidProperty)
-        {
-            pxr::VtValue val;
-            uidProperty->getValue(&val);
-
-            if (val.IsHolding<std::string>())
-            {
-                stringUID = val.Get<std::string>();
-            }
-        }
-
-        AssetMetaInfo nvfxMeta;
-        const std::string relativeSourcePath = FileSystemExtensions::getRelativeAssetPath(metaInfo.assetPath, false).string();
-        const std::string sourcePath = std::format("{}", relativeSourcePath.c_str());
-
-        auto id = dbManager.findIf(sourcePath);
-
-        if (id.isError() && !stringUID.empty())
-        {
-            id = Uid::parseString(stringUID);
-        }
-
-        const std::filesystem::path out = std::filesystem::path(outputPath) / std::to_string(folderIndex);
-        std::string fileName = toString(*id) + ".nvfx";
-
-        nvfxMeta.uid = *id;
-        nvfxMeta.dbPath = (out.filename() / fileName).string().c_str();
-        nvfxMeta.sourcePath = sourcePath.c_str();
-        nvfxMeta.nausdPath = (sourcePath + ".nausd").c_str();
-        nvfxMeta.dirty = false;
-        nvfxMeta.kind = "VFX";
-
-        auto outFilePath = utils::compilers::ensureOutputPath(outputPath, nvfxMeta, "");
-
-        auto sourceStage = pxr::UsdStage::Open(metaInfo.assetPath);
-        pxr::UsdPrim vfxPrim = sourceStage->GetPrimAtPath(pxr::SdfPath("/VFX"));
         DataBlock outBlk;
-        convert::mapPrimToBLK(UsdProxy::UsdProxyPrim(vfxPrim), &outBlk);
+        mapPrimToBLK(vfxProxyPrim, &outBlk);
         bool bRet = outBlk.saveToTextFile(outFilePath.string().c_str());
 
         if (bRet)

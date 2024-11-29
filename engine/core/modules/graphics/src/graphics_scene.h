@@ -35,8 +35,8 @@ namespace nau
     class GraphicsScene
     {
     public:
-
-        GraphicsScene();
+        GraphicsScene(const GraphicsScene&) = delete;
+        GraphicsScene(Uid worldUid);
 
         async::Task<> initialize();
 
@@ -51,6 +51,7 @@ namespace nau
         void renderOutlineMask();
         void renderTranslucency();
         void renderLights();
+        void renderDebugLights();
         void renderSceneDebug();
         void renderBillboards();
 
@@ -73,21 +74,21 @@ namespace nau
     private:
         void syncSceneCameras();
 
+        const Uid m_worldUid;
+
         eastl::vector<StaticMeshNode> m_staticMeshes;
         eastl::vector<BillboardNode> m_billboards;
         eastl::vector<SkinnedMeshNode> m_skinnedMeshes;
         eastl::vector<DirectionalLightNode> m_directionalLights;
         eastl::vector<EnvironmentNode> m_envNodes;
         eastl::vector<LightNode> m_lightNodes;
-        eastl::vector<CameraNode> m_cameras;
+        eastl::unordered_map<Uid, CameraNode> m_cameras;
 
         render::ClusteredLights m_lights;
         
         nau::Ptr<nau::RenderScene> m_renderScene;
 
         shaders::RenderStateId fakeId;
-
-        std::optional<size_t> m_activeCamera;
-        scene::ICameraManager::CameraCollection m_allInGameCameras;
+        scene::ICameraManager::CamerasSnapshot m_allInGameCameras;
     };
 }  // namespace nau

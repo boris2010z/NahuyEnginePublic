@@ -50,16 +50,15 @@ namespace nau::compilers
         const std::string path = metaInfo.assetPath;
         PXR_NS::UsdStageRefPtr uiSceneStage = PXR_NS::UsdStage::Open(path);
 
-        std::string assetOutputPath = FileSystemExtensions::replaceExtension(path, ext().data());
         const std::filesystem::path resourcesContentPath = std::filesystem::path(projectRootPath) / "resources";
-        std::filesystem::path exprotPath = resourcesContentPath / std::filesystem::relative(assetOutputPath, std::filesystem::path(projectRootPath) / getAssetsSubfolderDefaultName());
+        std::filesystem::path exprotPath = resourcesContentPath / FileSystemExtensions::replaceExtension(metaInfo.assetSourcePath, ext().data());
 
         DataBlock blk;
         translateFn(uiSceneStage, blk);
 
         if (!blk.saveToTextFile(exprotPath.string().c_str()))
         {
-            return NauMakeError("Failed to save UI scene asset to file {}", assetOutputPath);
+            return NauMakeError("Failed to save UI scene asset to file {}", exprotPath.string());
         }
 
         auto rootPrim = stage->GetPrimAtPath(pxr::SdfPath("/Root"));
@@ -98,13 +97,6 @@ namespace nau::compilers
         uiMeta.nausdPath = (sourcePath + ".nausd").c_str();
         uiMeta.dirty = false;
         uiMeta.kind = "UI";
-
-        auto outFilePath = utils::compilers::ensureOutputPath(outputPath, uiMeta, "");
-
-        if (!blk.saveToTextFile(outFilePath.string().c_str()))
-        {
-            return NauMakeError("Failed to save UI scene asset to file {}", assetOutputPath);
-        }
 
         return uiMeta;
 

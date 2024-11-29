@@ -22,6 +22,7 @@ namespace nau::render
         alignas(16) float4 texId_scale;
         float culling_radius;
         bool contactShadows = false;
+        bool debugDraw = false;
         SpotLight() :
             culling_radius(-1.0f),
             texId_scale(-1, 0, 0, 0)
@@ -34,13 +35,15 @@ namespace nau::render
                   float innerAttenuation,
                   const float3& direction,
                   float angle,
-                  bool contact_shadows) :
+                  bool contact_shadows,
+                  bool debugDraw) :
             pos_radius(position.x, position.y, position.z, radius),
             color_atten(float3(color.r, color.g, color.b) * intensity, cosf(innerAttenuation)),
             dir_angle(direction.x, direction.y, direction.z, tanf(angle / 2.f)),
             texId_scale(-1, 0, 0, 0),
             culling_radius(-1.0f),
-            contactShadows(contact_shadows)
+            contactShadows(contact_shadows),
+            debugDraw(debugDraw)
         {
         }
         SpotLight(const float3& p,
@@ -53,8 +56,9 @@ namespace nau::render
                   bool contact_shadows,
                   int tex,
                   float texture_scale,
-                  bool tex_rotation) :
-            SpotLight(p, col, rad, intensity, inner_att, dir, angle, contact_shadows)
+                  bool tex_rotation,
+                  bool debugDraw) :
+            SpotLight(p, col, rad, intensity, inner_att, dir, angle, contact_shadows, debugDraw)
         {
             setTexture(tex, texture_scale, tex_rotation);
         }

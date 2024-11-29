@@ -105,7 +105,7 @@ float4 PSMain(VsOutputLitForward input) : SV_Target
 
     float3 worldSpaceNormal = normalize(TangentToWorld(tangentNormal, GetTBN(input.norm, input.tangent)));
 
-    float3 pointToEye = worldViewPos.xyz - input.worldPos;
+    float3 pointToEye =  worldViewPos.xyz - input.worldPos;
     float3 view = normalize(pointToEye);
 
     // lights
@@ -130,7 +130,7 @@ float4 PSMain(VsOutputLitForward input) : SV_Target
 
     half specularStrength = saturate(luminance(albedo.rgb) * (1 / 0.04)) * 0.9 + 0.1;
 
-    half3 result = standardBRDF(NoV, NoL, diffuseColor, ggx_alpha, linearRoughness, specularColor, specularStrength, lightDir, view, half3(worldSpaceNormal)) * lightColor;
+    half3 result = standardBRDF( NoV, NoL, diffuseColor, ggx_alpha, linearRoughness, specularColor, specularStrength, lightDir, view, half3(worldSpaceNormal)) * lightColor;
 
     return float4(float3(result), 1.0f) * input.color;
 }

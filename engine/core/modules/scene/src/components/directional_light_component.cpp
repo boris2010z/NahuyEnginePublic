@@ -43,7 +43,7 @@ namespace nau::scene
 
     math::Vector3 DirectionalLightComponent::getDirection() const
     {
-        return  getWorldTransform().transformVector(nau::math::Vector3(1.0f, 0.0f, 0.0f));
+        return  getWorldTransform().transformVector(f3Tov3(FORWARD));
     }
 
     math::Color3 DirectionalLightComponent::getColor() const

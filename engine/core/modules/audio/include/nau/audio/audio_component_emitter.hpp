@@ -29,20 +29,29 @@ struct NAU_AUDIO_EXPORT AudioComponentEmitter
         CLASS_ATTRIBUTE(scene::ComponentDescriptionAttrib, "Audio Emitter (description)"))
 
     NAU_CLASS_FIELDS(
-        CLASS_FIELD(path),
+        CLASS_FIELD(containerAssetUid),
         CLASS_FIELD(loop),
         CLASS_FIELD(playOnStart))
 
+    /**
+     * @brief Advances all managed audio sources playbacks.
+     * 
+     * @param [in] dt Time in seconds elapsed since the last update.
+     */
     void updateComponent(float dt) override;
+
     void activateComponent() override;
     void deactivateComponent() override;
 
     // Properties
-    eastl::string path = "";
+    nau::Uid containerAssetUid;
     AudioAssetContainerPtr container = nullptr;
     AudioSourcePtr source = nullptr;
     bool loop = false;
     bool playOnStart = false;
+
+protected:
+    void createContainerFromBlk(const eastl::string& path);
 
 private:
     enum State

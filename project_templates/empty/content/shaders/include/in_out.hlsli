@@ -21,6 +21,8 @@ struct VsVFXOutput
     float4 color : COLOR;
     float2 texCoord : TEXCOORD;
     int frameID : TEXCOORD1;
+    int columns : TEXCOORD2;
+    int rows : TEXCOORD3;
 };
 
 struct VsInputLit

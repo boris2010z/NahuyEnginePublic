@@ -1,3 +1,6 @@
+// Copyright 2024 N-GINN LLC. All rights reserved.
+// Copyright (C) 2024  Gaijin Games KFT.  All rights reserved
+
 #include "ColorSpaceUtility.hlsl"
 #include "clustered/point_light.hlsli"
 
@@ -53,6 +56,15 @@ VsOutput deferred_lights_vs(VsInput input, uint spot_light_index : SV_InstanceID
     return output;
 }
 // ##endif
+
+
+#include "gbuffer_read.hlsli"
+
+float readGbufferDepth(float2 tc)
+{
+    return depth_gbuf.SampleLevel(default_sampler, float4(tc, 0, 0).xy, float4(tc, 0, 0).w).r;
+}
+
 
 float4 deferred_lights_ps(VsOutput input HW_USE_SCREEN_POS) :
     SV_Target

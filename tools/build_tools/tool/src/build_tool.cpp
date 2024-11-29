@@ -110,8 +110,9 @@ namespace nau
         m_buildConfig = std::make_unique<BuildConfig>(config);
         m_failed = false;
 
-        NAU_FATAL(std::filesystem::exists(config.projectPath), "Project path does not exist {}", config.projectPath);
+        const std::filesystem::path pathToProject = std::filesystem::path(m_buildConfig->projectPath);
 
+        NAU_ASSERT(std::filesystem::exists(pathToProject), "Project path does not exist {}", config.projectPath);
         NAU_ASSERT(nau::util::validateEnvironment(), "Invalid environment!");
 
         auto app = createApplication([config]
@@ -122,8 +123,6 @@ namespace nau
         });
 
         app->startupOnCurrentThread();
-
-        const std::filesystem::path pathToProject = std::filesystem::path(m_buildConfig->projectPath);
 
         FileSystem fs;
 
@@ -137,11 +136,6 @@ namespace nau
         if (pathToProject.compare(targetDestination) == 0)
         {
             NAU_ERROR("Project path and target destination are the same {}!", m_buildConfig->projectPath);
-        }
-
-        if (!fs.isEmpty(targetDestination))
-        {
-            NAU_ERROR("Target destination is not empty {}!", m_buildConfig->targetDestination);
         }
 
         NAU_CHECK_IS_CANCELLED
@@ -326,7 +320,7 @@ namespace nau
         const std::filesystem::path buildPath = std::filesystem::path(m_buildConfig->projectPath) / "bin";
 
         {
-            auto result = runProcess(std::format("cmake -B{} -S{} --preset {} -DCMAKE_INSTALL_PREFIX={} -DNAU_CORE_TOOLS=OFF -DNAU_PACKAGE_BUILD=ON -DNAU_CORE_TESTS=OFF -DNAU_CORE_SAMPLES=OFF -DNAU_FORCE_ENABLE_SHADER_COMPILER_TOOL=ON", cmakeFiles.string(), m_buildConfig->projectPath, m_buildConfig->preset, buildPath.string()));
+            auto result = runProcess(std::format("cmake -B\"{}\" -S\"{}\" --preset {} -DCMAKE_INSTALL_PREFIX={} -DNAU_CORE_TOOLS=OFF -DNAU_PACKAGE_BUILD=ON -DNAU_CORE_TESTS=OFF -DNAU_CORE_SAMPLES=OFF -DNAU_FORCE_ENABLE_SHADER_COMPILER_TOOL=ON", cmakeFiles.string(), m_buildConfig->projectPath, m_buildConfig->preset, buildPath.string()));
 
             if (result != BuildResult::Success)
             {
@@ -338,7 +332,7 @@ namespace nau
         }
 
         {
-            auto result = runProcess(std::format("cmake --build {} --config {}", cmakeFiles.string(), m_buildConfig->buildConfiguration));
+            auto result = runProcess(std::format("cmake --build \"{}\" --config {}", cmakeFiles.string(), m_buildConfig->buildConfiguration));
 
             if (result != BuildResult::Success)
             {
@@ -380,7 +374,7 @@ namespace nau
         }
 
         {
-            auto result = runProcess(std::format("cmake -B{} -S{} --preset {} -DCMAKE_INSTALL_PREFIX={} -DNAU_CORE_TOOLS=OFF -DNAU_PACKAGE_BUILD=ON -DNAU_CORE_TESTS=OFF -DNAU_CORE_SAMPLES=OFF -DNAU_FORCE_ENABLE_SHADER_COMPILER_TOOL=ON", cmakeFiles.string(), m_buildConfig->projectPath, m_buildConfig->preset, buildPath.string()));
+            auto result = runProcess(std::format("cmake -B\"{}\" -S\"{}\" --preset {} -DCMAKE_INSTALL_PREFIX={} -DNAU_CORE_TOOLS=OFF -DNAU_PACKAGE_BUILD=ON -DNAU_CORE_TESTS=OFF -DNAU_CORE_SAMPLES=OFF -DNAU_FORCE_ENABLE_SHADER_COMPILER_TOOL=ON", cmakeFiles.string(), m_buildConfig->projectPath, m_buildConfig->preset, buildPath.string()));
 
             if (result != BuildResult::Success)
             {
@@ -392,7 +386,7 @@ namespace nau
         }
 
         {
-            auto result = runProcess(std::format("cmake --build {} --config {}", cmakeFiles.string(), m_buildConfig->buildConfiguration));
+            auto result = runProcess(std::format("cmake --build \"{}\" --config {}", cmakeFiles.string(), m_buildConfig->buildConfiguration));
 
             if (result != BuildResult::Success)
             {

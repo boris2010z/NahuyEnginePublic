@@ -152,6 +152,7 @@ try_inc(cmake/core/NauFramework/NauFramework-config.cmake)
 try_inc(cmake/core/Physics/Physics-config.cmake)
 try_inc(cmake/core/PhysicsJolt/PhysicsJolt-config.cmake)
 try_inc(cmake/core/Network/Network-config.cmake)
+try_inc(cmake/core/Audio/Audio-config.cmake)
 
 try_inc(cmake/tools/ShaderCompilerTool/ShaderCompilerTool-config.cmake)
 
@@ -195,6 +196,7 @@ nau_target_link_modules(${TargetName}
   MainGameModule
   PlatformApp
   Animation
+  Audio
   CoreScene
   CoreAssets
   GraphicsAssets

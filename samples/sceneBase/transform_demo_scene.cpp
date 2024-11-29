@@ -90,13 +90,17 @@ namespace nau::sample
         constexpr uint32_t instsYDimension = 10;
         constexpr uint32_t instsZDimension = 10;
         constexpr float instStepSize = 5;
+
+        scene::SceneObject::Ptr object = factory.createSceneObject<StaticMeshComponent>();
+
         for (int i = 0; i < instsXDimension; ++i)
         {
             for (int j = 0; j < instsYDimension; ++j)
             {
                 for (int k = 0; k < instsZDimension; ++k)
                 {
-                    auto& meshObject0 = sceneRoot.attachChild(factory.createSceneObject<StaticMeshComponent>());
+                    // auto& meshObject0 = sceneRoot.attachChild(factory.createSceneObject<StaticMeshComponent>());
+                    auto& meshObject0 = sceneRoot.attachChild(object->clone());
                     meshObject0.getRootComponent<StaticMeshComponent>().setMeshGeometry(StaticMeshAssetRef("file:/content/scenes/scene_demo.gltf+[mesh/2]"));
                     meshObject0.setTranslation({ instStepSize * i, instStepSize * j - 3, instStepSize * k });
                     meshObject0.setScale({ 1.0f, 1.0f, 1.0f });

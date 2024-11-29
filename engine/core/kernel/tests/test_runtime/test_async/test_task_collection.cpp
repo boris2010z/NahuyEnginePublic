@@ -4,6 +4,7 @@
 #include "helpers/runtime_guard.h"
 #include "nau/async/async_timer.h"
 #include "nau/async/task_collection.h"
+#include "nau/async/work_queue.h"
 #include "nau/threading/event.h"
 
 namespace nau::test
@@ -44,13 +45,13 @@ namespace nau::test
         std::mutex mutex;
         std::vector<std::thread> threads;
 
-        for(size_t i = 0; i < ThreadsCount; ++i)
+        for (size_t i = 0; i < ThreadsCount; ++i)
         {
             threads.emplace_back([this, &taskSources, &counterEnter, &counterReadyAwaiter, &counterReadyAll, &mutex]()
             {
                 std::vector<TaskSource<>> threadTasks;
 
-                for(size_t j = 0; j < TasksPerThread; ++j)
+                for (size_t j = 0; j < TasksPerThread; ++j)
                 {
                     Task<> task = [&threadTasks](std::atomic_size_t& counterEnter, std::atomic_size_t& counterReadyAwaiter, std::atomic_size_t& counterReadyAll) -> Task<>
                     {
@@ -121,13 +122,13 @@ namespace nau::test
         std::vector<TaskSource<>> tasks;
         std::atomic_size_t counter{0};
 
-        for(size_t i = 0; i < TasksCount; ++i)
+        for (size_t i = 0; i < TasksCount; ++i)
         {
             auto task = [](Task<> signalTask, TaskCollection& collection, size_t subTaskCount, std::atomic_size_t& counter) -> Task<>
             {
                 co_await signalTask;
 
-                for(size_t i = 0; i < subTaskCount; ++i)
+                for (size_t i = 0; i < subTaskCount; ++i)
                 {
                     co_await 1ms;
                     auto subTask = [](std::atomic_size_t& counter) -> Task<>
@@ -145,13 +146,74 @@ namespace nau::test
 
         auto closeTask = m_taskCollection.disposeAsync();
 
-        for(auto& taskSource : tasks)
+        for (auto& taskSource : tasks)
         {
             taskSource.resolve();
         }
 
         waitResult(std::ref(closeTask)).ignore();
         ASSERT_THAT(counter, Eq(ExpectedCounterValue));
+    }
+
+    /**
+     */
+    TEST_F(TestTaskCollection, PushReadyTask)
+    {
+        using namespace nau::async;
+
+        m_taskCollection.push(Task<>::makeResolved());
+        ASSERT_TRUE(m_taskCollection.isEmpty());
+    }
+
+    /**
+        Test:
+            Check for adding tasks that can be completed very quickly:
+            there is can be a task that will be completed during the call of the TaskCollection::push itself.
+     */
+    TEST_F(TestTaskCollection, PushFastCompletingTasks)
+    {
+        using namespace nau::async;
+
+        constexpr size_t IterationCount = 7000;
+
+        std::atomic<bool> complete = false;
+        WorkQueue::Ptr worker = WorkQueue::create();
+
+        std::thread workerThread([&worker, &complete]
+        {
+            while (!complete)
+            {
+                worker->poll(std::nullopt);
+            }
+        });
+
+        scope_on_leave
+        {
+            complete = true;
+            worker->notify();
+            workerThread.join();
+        };
+
+        size_t counter = 0;
+
+        std::thread senderThread([&]
+        {
+            for (unsigned i = 0; i < IterationCount; ++i)
+            {
+                auto task = [](WorkQueue::Ptr& worker, size_t& counter) -> Task<>
+                {
+                    co_await worker;
+                    ++counter;
+                }(worker, counter);
+
+                m_taskCollection.push(std::move(task));
+            }
+        });
+
+        senderThread.join();
+        async::waitResult(m_taskCollection.disposeAsync()).ignore();
+
+        ASSERT_EQ(counter, IterationCount);
     }
 
 }  // namespace nau::test

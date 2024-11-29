@@ -1,7 +1,6 @@
 // Copyright 2024 N-GINN LLC. All rights reserved.
 // Use of this source code is governed by a BSD-3 Clause license that can be found in the LICENSE file.
 
-
 #include "nau/scene/camera/camera_manager.h"
 #include "nau/scene/components/camera_component.h"
 #include "scene_test_base.h"
@@ -20,31 +19,17 @@ namespace nau::test
         static void checkCameras(eastl::span<scene::ICameraControl*> expectedCameras)
         {
             using namespace nau::scene;
-            constexpr size_t RepeatCounted = 2;
 
-            // loop: check that subsequent calls returns same state
-            for (size_t i = 0; i < RepeatCounted; ++i)
+            constexpr size_t RepeatCount = 2;
+
+            // multiple repeats, to check that getCameras() returns same state
+            for (size_t i = 0; i < RepeatCount; ++i)
             {
-                auto cameras = getCameraManager().getCameras();
-
-                const auto findCamera = [&cameras](Uid cameraUid) -> const ICameraProperties*
+                auto snapshot = getCameraManager().getCameras();
+                for (scene::ICameraControl* expectedCamera : expectedCameras)
                 {
-                    auto iter = eastl::find_if(cameras.begin(), cameras.end(), [cameraUid](nau::Ptr<ICameraProperties>& props)
-                    {
-                        return props->getCameraUid() == cameraUid;
-                    });
-
-                    return iter != cameras.end() ? iter->get() : nullptr;
-                };
-
-                ASSERT_EQ(cameras.size(), expectedCameras.size());
-
-                for (size_t y = 0; y < cameras.size(); ++y)
-                {
-                    auto& expectedCamera = expectedCameras[y];
-                    const ICameraProperties* const camera = findCamera(expectedCamera->getCameraUid());
+                    auto camera = snapshot.getCameraByUid(expectedCamera->getCameraUid());
                     ASSERT_TRUE(camera) << "Camera with specified uid not found";
-
                     ASSERT_EQ(camera->getCameraUid(), expectedCamera->getCameraUid());
                     ASSERT_EQ(camera->getWorldUid(), expectedCamera->getWorldUid());
                     ASSERT_TRUE(camera->getTranslation().similar(expectedCamera->getTranslation()));
@@ -68,7 +53,7 @@ namespace nau::test
      */
     TEST_F(TestCameraManager, NoCamerasByDefault)
     {
-        ASSERT_TRUE(getCameraManager().getCameras().empty());
+        ASSERT_TRUE(getCameraManager().getCameras().isEmpty());
     }
 
     /**
@@ -103,11 +88,12 @@ namespace nau::test
         ASSERT_TRUE(camera);
         ASSERT_EQ(getSceneManager().getDefaultWorld().getUid(), camera->getWorldUid());
 
-        auto cameras = getCameraManager().getCameras();
+        auto snapshot = getCameraManager().getCameras();
+        auto cameras = snapshot.getWorldAllCameras();
         ASSERT_EQ(cameras.size(), 1);
 
         camera.reset();
-        ASSERT_TRUE(getCameraManager().getCameras().empty());
+        ASSERT_TRUE(getCameraManager().getCameras().getWorldAllCameras().empty());
     }
 
     /**
@@ -135,7 +121,9 @@ namespace nau::test
             // loop: check that subsequent calls returns same state
             for (size_t i = 0; i < 2; ++i)
             {
-                auto cameras = getCameraManager().getCameras();
+                auto snapshot = getCameraManager().getCameras();
+                auto cameras = snapshot.getWorldAllCameras();
+
                 ASSERT_ASYNC(cameras.size() == 1);
                 ASSERT_ASYNC(cameras.front()->getCameraUid() == camera.getCameraUid());
                 ASSERT_ASYNC(cameras.front()->getWorldUid() == camera.getWorldUid());
@@ -180,7 +168,9 @@ namespace nau::test
             // loop: check that subsequent calls returns same state
             for (size_t i = 0; i < 2; ++i)
             {
-                auto cameras = getCameraManager().getCameras();
+                auto snapshot = getCameraManager().getCameras();
+                auto cameras = snapshot.getWorldAllCameras(newWorld->getUid());
+
                 ASSERT_ASYNC(cameras.size() == 1);
                 ASSERT_ASYNC(cameras.front()->getWorldUid() == newWorld->getUid());
                 ASSERT_ASYNC(cameras.front()->getCameraUid() == camera.getCameraUid());
@@ -217,7 +207,9 @@ namespace nau::test
             CameraComponent& camera = objectRef->getRootComponent<CameraComponent>();
 
             {
-                auto cameras = getCameraManager().getCameras();
+                auto snapshot = getCameraManager().getCameras();
+
+                auto cameras = snapshot.getWorldAllCameras();
                 ASSERT_ASYNC(cameras.size() == 1);
                 ASSERT_ASYNC(cameras.front()->getCameraUid() == camera.getCameraUid());
             }
@@ -227,7 +219,7 @@ namespace nau::test
             ASSERT_FALSE_ASYNC(objectRef);
 
             auto cameras = getCameraManager().getCameras();
-            ASSERT_ASYNC(cameras.empty());
+            ASSERT_ASYNC(cameras.isEmpty());
 
             co_return AssertionSuccess();
         });
@@ -243,14 +235,14 @@ namespace nau::test
     {
         using namespace nau::scene;
 
-        ICameraManager::CameraCollection cameras;
+        ICameraManager::CamerasSnapshot snapshot;
         ICameraManager& manager = getCameraManager();
 
-        const auto syncCameras = [&cameras, &manager]() -> eastl::pair<size_t, size_t>
+        const auto syncCameras = [&snapshot, &manager]() -> eastl::pair<size_t, size_t>
         {
             size_t addedCount = 0;
             size_t removedCount = 0;
-            manager.syncCameras(cameras, [&addedCount]([[maybe_unused]] const ICameraProperties& cam)
+            manager.syncCameras(snapshot, [&addedCount]([[maybe_unused]] const ICameraProperties& cam)
             {
                 ++addedCount;
             }, [&removedCount]([[maybe_unused]] const ICameraProperties& cam)
@@ -270,7 +262,7 @@ namespace nau::test
             const auto [addedCount, removedCount] = syncCameras();
             ASSERT_EQ(addedCount, 3);
             ASSERT_EQ(removedCount, 0);
-            ASSERT_EQ(cameras.size(), 3);
+            ASSERT_EQ(snapshot.getWorldAllCameras().size(), 3);
 
             eastl::array cameras{camera_0.get(), camera_1.get(), camera_2.get()};
             EXPECT_NO_FATAL_FAILURE(checkCameras(cameras));
@@ -284,7 +276,7 @@ namespace nau::test
             const auto [addedCount, removedCount] = syncCameras();
             ASSERT_EQ(addedCount, 1);
             ASSERT_EQ(removedCount, 1);
-            ASSERT_EQ(cameras.size(), 3);
+            ASSERT_EQ(snapshot.getWorldAllCameras().size(), 3);
 
             eastl::array cameras{camera_0.get(), camera_1.get(), camera_2.get()};
             EXPECT_NO_FATAL_FAILURE(checkCameras(cameras));
@@ -296,11 +288,208 @@ namespace nau::test
             const auto [addedCount, removedCount] = syncCameras();
             ASSERT_EQ(addedCount, 0);
             ASSERT_EQ(removedCount, 2);
-            ASSERT_EQ(cameras.size(), 1);
+            ASSERT_EQ(snapshot.getWorldAllCameras().size(), 1);
 
             eastl::array cameras{camera_1.get()};
             EXPECT_NO_FATAL_FAILURE(checkCameras(cameras));
         }
+    }
+
+    TEST_F(TestCameraManager, HasNoMainCameraByDefault)
+    {
+        scene::ICameraManager& camManager = getCameraManager();
+        auto snapshot = camManager.getCameras();
+
+        ASSERT_FALSE(snapshot.getWorldMainCamera());
+        ASSERT_FALSE(snapshot.getWorldExplicitMainCamera());
+    }
+
+    TEST_F(TestCameraManager, MainCameraByDefault)
+    {
+        scene::ICameraManager& camManager = getCameraManager();
+        auto detachedCamera1 = camManager.createDetachedCamera();
+        auto detachedCamera2 = camManager.createDetachedCamera();
+
+        auto snapshot = camManager.getCameras();
+        ASSERT_TRUE(snapshot.getWorldMainCamera());
+        ASSERT_FALSE(snapshot.getWorldExplicitMainCamera());
+    }
+
+    TEST_F(TestCameraManager, SetDetachedMainCamera)
+    {
+        scene::ICameraManager& camManager = getCameraManager();
+        auto detachedCamera1 = camManager.createDetachedCamera();
+        auto detachedCamera2 = camManager.createDetachedCamera();
+
+        camManager.setMainCamera(*detachedCamera1);
+
+        auto snapshot = camManager.getCameras();
+
+        {
+            auto mainCamera = snapshot.getWorldMainCamera();
+            ASSERT_TRUE(mainCamera);
+            ASSERT_EQ(mainCamera->getCameraUid(), detachedCamera1->getCameraUid());
+            ASSERT_EQ(snapshot.getWorldExplicitMainCamera()->getCameraUid(), detachedCamera1->getCameraUid());
+        }
+
+        camManager.setMainCamera(*detachedCamera2);
+        camManager.syncCameras(snapshot);
+
+        {
+            auto mainCamera = snapshot.getWorldMainCamera();
+            ASSERT_TRUE(mainCamera);
+            ASSERT_EQ(mainCamera->getCameraUid(), detachedCamera2->getCameraUid());
+            ASSERT_EQ(snapshot.getWorldExplicitMainCamera()->getCameraUid(), detachedCamera2->getCameraUid());
+        }
+    }
+
+    /**
+    */
+    TEST_F(TestCameraManager, DeleteMainDetachedCamera)
+    {
+        scene::ICameraManager& camManager = getCameraManager();
+        auto detachedCamera1 = camManager.createDetachedCamera();
+        auto detachedCamera2 = camManager.createDetachedCamera();
+
+        camManager.setMainCamera(*detachedCamera2);
+        auto snapshot = camManager.getCameras();
+
+        {
+            auto mainCamera = snapshot.getWorldMainCamera();
+            ASSERT_TRUE(mainCamera);
+            ASSERT_EQ(mainCamera->getCameraUid(), detachedCamera2->getCameraUid());
+            ASSERT_EQ(snapshot.getWorldExplicitMainCamera()->getCameraUid(), detachedCamera2->getCameraUid());
+        }
+
+        detachedCamera2.reset();
+        camManager.syncCameras(snapshot);
+
+        {
+            auto mainCamera = snapshot.getWorldMainCamera();
+            ASSERT_TRUE(mainCamera);
+            ASSERT_EQ(mainCamera->getCameraUid(), detachedCamera1->getCameraUid());
+            ASSERT_FALSE(snapshot.getWorldExplicitMainCamera());
+        }
+    }
+
+    /**
+    */
+    TEST_F(TestCameraManager, DeleteMainSceneCamera)
+    {
+        using namespace nau::async;
+        using namespace nau::scene;
+        using namespace ::testing;
+
+        const AssertionResult testResult = runTestApp([]() -> Task<AssertionResult>
+        {
+            ICameraManager& camManager = getCameraManager();
+
+            ICameraManager::CamerasSnapshot snapshot;
+
+            auto detachedCamera1 = camManager.createDetachedCamera();
+            auto detachedCamera2 = camManager.createDetachedCamera();
+
+            ObjectWeakRef sceneRef = co_await getSceneManager().activateScene(createEmptyScene());
+
+            CameraComponent& camera1 = sceneRef->getRoot().addComponent<CameraComponent>();
+            [[maybe_unused]] CameraComponent& camera2 = sceneRef->getRoot().addComponent<CameraComponent>();
+
+            camManager.setMainCamera(camera1);
+            camManager.syncCameras(snapshot);
+            ASSERT_ASYNC(snapshot.getWorldExplicitMainCamera()->getCameraUid() == camera1.getCameraUid());
+
+            camera1.getParentObject().removeComponent(camera1);
+
+            camManager.syncCameras(snapshot);
+            ASSERT_FALSE_ASYNC(snapshot.getWorldExplicitMainCamera());
+            ASSERT_ASYNC(snapshot.getWorldMainCamera());
+        
+            co_return AssertionSuccess();
+        });
+
+        ASSERT_TRUE(testResult);
+    }
+
+    /**
+    */
+    TEST_F(TestCameraManager, ResetMainCamera)
+    {
+        scene::ICameraManager& camManager = getCameraManager();
+        auto detachedCamera1 = camManager.createDetachedCamera();
+        auto detachedCamera2 = camManager.createDetachedCamera();
+
+        camManager.setMainCamera(*detachedCamera1);
+
+        auto snapshot = camManager.getCameras();
+
+        {
+            auto mainCamera = snapshot.getWorldMainCamera();
+            ASSERT_TRUE(mainCamera);
+            ASSERT_EQ(mainCamera->getCameraUid(), detachedCamera1->getCameraUid());
+            ASSERT_EQ(snapshot.getWorldExplicitMainCamera()->getCameraUid(), detachedCamera1->getCameraUid());
+        }
+
+        camManager.resetWorldMainCamera();
+        camManager.syncCameras(snapshot);
+
+        ASSERT_TRUE(snapshot.getWorldMainCamera());
+        ASSERT_FALSE(snapshot.getWorldExplicitMainCamera());
+    }
+
+    TEST_F(TestCameraManager, SetMainCamera)
+    {
+        using namespace nau::async;
+        using namespace nau::scene;
+        using namespace ::testing;
+
+        const AssertionResult testResult = runTestApp([]() -> Task<AssertionResult>
+        {
+            ICameraManager& camManager = getCameraManager();
+
+            ICameraManager::CamerasSnapshot snapshot;
+
+            auto detachedCamera1 = camManager.createDetachedCamera();
+            auto detachedCamera2 = camManager.createDetachedCamera();
+
+            ObjectWeakRef sceneRef = co_await getSceneManager().activateScene(createEmptyScene());
+
+            CameraComponent& camera1 = sceneRef->getRoot().attachChild(createObject<CameraComponent>()).getRootComponent<CameraComponent>();
+            CameraComponent& camera2 = sceneRef->getRoot().attachChild(createObject<CameraComponent>()).getRootComponent<CameraComponent>();
+
+            camManager.syncCameras(snapshot);
+            ASSERT_ASYNC(snapshot.getWorldAllCameras().size() == 4);
+            ASSERT_ASYNC(snapshot.getWorldMainCamera());
+            ASSERT_FALSE_ASYNC(snapshot.getWorldExplicitMainCamera());
+
+            camManager.setMainCamera(camera1);
+            camManager.syncCameras(snapshot);
+            ASSERT_ASYNC(snapshot.getWorldMainCamera()->getCameraUid() == camera1.getCameraUid());
+            ASSERT_ASYNC(snapshot.getWorldExplicitMainCamera()->getCameraUid() == camera1.getCameraUid());
+
+            camManager.setMainCamera(camera2);
+            camManager.syncCameras(snapshot);
+            ASSERT_ASYNC(snapshot.getWorldMainCamera()->getCameraUid() == camera2.getCameraUid());
+            ASSERT_ASYNC(snapshot.getWorldExplicitMainCamera()->getCameraUid() == camera2.getCameraUid());
+
+            camManager.setMainCamera(*detachedCamera1);
+            camManager.syncCameras(snapshot);
+            ASSERT_ASYNC(snapshot.getWorldMainCamera()->getCameraUid() == detachedCamera1->getCameraUid());
+            ASSERT_ASYNC(snapshot.getWorldExplicitMainCamera()->getCameraUid() == detachedCamera1->getCameraUid());
+
+            camManager.setMainCamera(*detachedCamera2);
+            camManager.syncCameras(snapshot);
+            ASSERT_ASYNC(snapshot.getWorldMainCamera()->getCameraUid() == detachedCamera2->getCameraUid());
+            ASSERT_ASYNC(snapshot.getWorldExplicitMainCamera()->getCameraUid() == detachedCamera2->getCameraUid());
+
+            camManager.resetWorldMainCamera();
+            camManager.syncCameras(snapshot);
+            ASSERT_ASYNC(snapshot.getWorldMainCamera());
+            ASSERT_ASYNC(!snapshot.getWorldExplicitMainCamera());
+
+            co_return AssertionSuccess();
+        });
+
+        ASSERT_TRUE(testResult);
     }
 
 }  // namespace nau::test

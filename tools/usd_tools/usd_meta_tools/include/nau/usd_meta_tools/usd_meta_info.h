@@ -77,7 +77,7 @@ namespace nau
         bool ignoreAnimation = false;
         bool generateLods = false;
         bool generateCollider = false;
-        bool generateTangents = false;
+        bool generateTangents = true;
         bool flipU = false;
         bool flipV = false;
         bool skinned = false;

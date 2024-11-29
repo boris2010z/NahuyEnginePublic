@@ -1,7 +1,6 @@
 // Copyright 2024 N-GINN LLC. All rights reserved.
 // Use of this source code is governed by a BSD-3 Clause license that can be found in the LICENSE file.
 
-
 #include <nau/app/application.h>
 #include <nau/async/task_collection.h>
 
@@ -102,6 +101,7 @@ namespace nau::diag
         spdlog::details::file_helper m_file;
         nau::threading::SpinLock m_mutex;
         async::TaskCollection m_fileWriteTasks;
+        eastl::vector<LoggerMessage> m_pendingMessages;
 
         eastl::string fileNameFormat(eastl::string_view filename)
         {
@@ -123,8 +123,9 @@ namespace nau::diag
             lock_(m_mutex);
 
             // TODO: at this moment processMessage can be called while services system is gone.
-            if (!hasServiceProvider())
+            if (!hasServiceProvider() || !getServiceProvider().has<io::IFileSystem>() || !getApplication().hasExecutor())
             {
+                m_pendingMessages.emplace_back(message);
                 return;
             }
 
@@ -134,18 +135,41 @@ namespace nau::diag
                 m_file.open();
             }
 
-            auto writeToFile = [](spdlog::details::file_helper* file, LoggerMessage message) -> async::Task<>
+            if (m_pendingMessages.size() != 0)
             {
-                BackgroundWorkService* const workService = hasServiceProvider() ? getServiceProvider().find<BackgroundWorkService>() : nullptr;
-                if (workService)
-                {
-                    co_await workService->getExecutor();
-                }
-                file->write(DefaultMessageFormatter::format(message));
-                file->flush();
-            };
+                m_pendingMessages.emplace_back(message);
 
-            m_fileWriteTasks.push(writeToFile(&m_file, message));
+                auto writeToFile = [](spdlog::details::file_helper* file, eastl::vector<LoggerMessage> messages) -> nau::async::Task<>
+                {
+                    BackgroundWorkService* const workService = hasServiceProvider() ? getServiceProvider().find<BackgroundWorkService>() : nullptr;
+                    if (workService)
+                    {
+                        co_await workService->getExecutor();
+                    }
+                    for (auto& message : messages)
+                    {
+                        file->write(DefaultMessageFormatter::format(message));
+                    }
+                    file->flush();
+                };
+
+                m_fileWriteTasks.push(writeToFile(&m_file, std::move(m_pendingMessages)));
+            }
+            else
+            {
+                auto writeToFile = [](spdlog::details::file_helper* file, LoggerMessage message) -> async::Task<>
+                {
+                    BackgroundWorkService* const workService = hasServiceProvider() ? getServiceProvider().find<BackgroundWorkService>() : nullptr;
+                    if (workService)
+                    {
+                        co_await workService->getExecutor();
+                    }
+                    file->write(DefaultMessageFormatter::format(message));
+                    file->flush();
+                };
+
+                m_fileWriteTasks.push(writeToFile(&m_file, message));
+            }
         }
         ~FileLogSubscriber() override
         {

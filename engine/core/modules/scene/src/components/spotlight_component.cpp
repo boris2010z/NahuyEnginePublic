@@ -81,4 +81,14 @@ namespace nau::scene
         m_angle = angle;
     }
 
+    bool SpotlightComponent::getDebugDraw() const
+    {
+        return m_debugDraw;
+    }
+
+    void SpotlightComponent::setDebugDraw(bool debugDraw)
+    {
+        m_debugDraw = debugDraw;
+    }
+
 }  // namespace nau::scene

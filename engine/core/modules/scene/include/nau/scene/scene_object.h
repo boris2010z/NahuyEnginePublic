@@ -115,7 +115,7 @@ namespace nau::scene
          */
         ActivationState getActivationState() const;
 
-        SceneObject::Ptr clone() const;
+        SceneObject::Ptr clone();
 
         /**
          *   @brief Retrieves the parent of the object.

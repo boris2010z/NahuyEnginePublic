@@ -33,7 +33,7 @@ namespace nau::test
                 {
                     if (assetPath.getContainerPath() == "png")
                     {
-                        return {AssetPath{"t_content:tex_png"}, {.kind = "texture/png"}};
+                        return {AssetPath{"t_content:tex_png"}, {.kind = "png"}};
                     }
                 }
                 else if (assetPath.hasScheme(SchemeToInvalid))
@@ -207,10 +207,10 @@ namespace nau::test
     TEST_F(TestAssetScheme, CustomSchemeChained)
     {
         auto assetPng = getAssetManager().openAsset(AssetPath{"path2content:png"});
-        EXPECT_TRUE(assetPng);
+        ASSERT_TRUE(assetPng);
         nau::Ptr<ITextureAssetAccessor> texPng = assetToTexture(assetPng);
-        EXPECT_TRUE(texPng);
-        EXPECT_EQ(texPng->getDescription().width, PngWidth);
+        ASSERT_TRUE(texPng);
+        ASSERT_EQ(texPng->getDescription().width, PngWidth);
     }
 
     /**

@@ -7,6 +7,8 @@
 
 #include "nau/input.h"
 #include "nau/scene/camera/camera_manager.h"
+#include "nau/scene/components/camera_component.h"
+#include "nau/scene/scene.h"
 
 namespace nau::sample
 {
@@ -19,10 +21,25 @@ namespace nau::sample
 
     void CameraControl::setCamControlKind(CamControlKind kind)
     {
+        auto& manager = getServiceProvider().get<scene::ICameraManager>();
+
         m_cameraKind = kind;
         if (m_cameraKind == CamControlKind::UseCameraManager)
         {
-            getDetachedCamera();
+            auto& cam = getDetachedCamera();
+            manager.setMainCamera(cam);
+        }
+        else
+        {
+            auto *cam = getParentObject().getScene()->getRoot().findFirstComponent<scene::CameraComponent>(true);
+            if (cam)
+            {
+                manager.setMainCamera(*cam);
+            }
+            else
+            {
+                manager.resetWorldMainCamera();
+            }
         }
     }
 
@@ -84,6 +101,11 @@ namespace nau::sample
             NAU_LOG("Quit the application...");
             getApplication().stop();
         }
+        else if (isKeyboardButtonPressed(0, input::Key::K))
+        {
+            const auto newControlKind = (m_cameraKind == CamControlKind::UseSceneObject ? CamControlKind::UseCameraManager : CamControlKind::UseSceneObject);
+            setCamControlKind(newControlKind);
+        }
 
         if (isMouseButtonHold(0, MouseKey::Button0))
         {
@@ -124,6 +146,10 @@ namespace nau::sample
             static float shift[3] = {.0f, -0.f, 0.f};
             ImGui::SliderFloat3("Shift", shift, -3, 3);
             m_omnilightComponent->setShift(math::Vector3(shift[0], shift[1], shift[2]));
+
+            static bool drawDebug = true;
+            ImGui::Checkbox("DrawDebug:", &drawDebug);
+            m_omnilightComponent->setDebugDraw(drawDebug);
 
             static float color[3] = {1, 1, 0};
             ImGui::ColorPicker3("LightColor", color);
@@ -176,6 +202,10 @@ namespace nau::sample
             ImGui::SliderFloat3("Shift", shift, -3, 3);
             m_spotlightComponent->setShift(math::Vector3(shift[0], shift[1], shift[2]));
 
+            static bool drawDebug = true;
+            ImGui::Checkbox("DrawDebug:", &drawDebug);
+            m_spotlightComponent->setDebugDraw(drawDebug);
+
             static float color[3] = {0, 1, 0};
             ImGui::ColorPicker3("LightColor", color);
             m_spotlightComponent->setColor({color[0], color[1], color[2]});
@@ -204,7 +234,7 @@ namespace nau::sample
 
         const math::vec3 vec = math::mat3::rotation(control.getRotation()) * offset;
         control.setTranslation(control.getTranslation() + vec);
-        this->getParentObject().setTranslation(control.getTranslation());
+        //this->getParentObject().setTranslation(control.getTranslation());
     }
 
     scene::TransformControl& CameraControl::getControlledTransform()

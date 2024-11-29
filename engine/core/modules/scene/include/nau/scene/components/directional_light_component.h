@@ -16,6 +16,8 @@ namespace nau::scene
         NAU_OBJECT(nau::scene::DirectionalLightComponent, SceneComponent)
         NAU_DECLARE_DYNAMIC_OBJECT
 
+        static inline constexpr nau::math::float3 FORWARD = {1.0f, 0.0f, 0.0f};
+
         NAU_CLASS_FIELDS(
             CLASS_NAMED_FIELD(m_red, "colorRed"),
             CLASS_NAMED_FIELD(m_green, "colorGreen"),

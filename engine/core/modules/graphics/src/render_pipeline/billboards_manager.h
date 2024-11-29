@@ -28,6 +28,7 @@ namespace nau
         using Ptr = nau::Ptr<BillboardsManager>;
 
         BillboardsManager(nau::Ptr<nau::MaterialAssetView> material);
+        ~BillboardsManager();
 
         nau::async::Task<eastl::shared_ptr<nau::BillboardHandle>> addBillboard(ReloadableAssetView::Ptr texture, nau::math::Vector3 position, nau::Uid uid, float screenPercentageSize = 0.1f);
 
@@ -45,6 +46,8 @@ namespace nau
 
         nau::Ptr<nau::MaterialAssetView> m_billboardMaterial;
         bool m_isBillboardsDirty = false;
+
+        Sbuffer* dataBuffer = nullptr;
     };
 
     class BillboardHandle

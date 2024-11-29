@@ -129,8 +129,8 @@ namespace nau::render
 
         m_uidNodes.addNode(dabfg::register_node(nau::utils::format("{}_{}", "pixel_extraction", m_swapchain).c_str(), DABFG_PP_NODE_SRC, [this](dabfg::Registry registry)
         {
-            registry.orderMeAfter(nau::utils::format("{}_{}", "forward_translucent", m_swapchain).c_str());
-            registry.orderMeBefore(nau::utils::format("{}_{}", "post_fx_nodes", m_swapchain).c_str());
+            registry.orderMeAfter(nau::utils::format("{}_{}", "billboard_render", m_swapchain).c_str());
+            registry.orderMeBefore(nau::utils::format("{}_{}", "grid_render", m_swapchain).c_str());
             registry.executionHas(dabfg::SideEffects::External);
 
             auto uidTex = registry.readTexture(nau::utils::format("{}_{}", "uid_texture", m_swapchain).c_str())
@@ -152,6 +152,7 @@ namespace nau::render
 
                     PixelData data;
                     m_pixelDataExtractionMaterial->readRwBuffer("default", "ResultBuffer", &data, sizeof(PixelData));
+
                     request.promise.resolve(data.uid);
                 }
 
@@ -205,17 +206,6 @@ namespace nau::render
                 d3d::set_depth(m_gBuffer->getDepth(), DepthAccess::RW);
                 d3d::set_render_target(1, const_cast<BaseTexture*>(uidTarget.get()), 0);
                 m_graphicsScene->renderBillboards();
-
-
-                if (m_drawViewportGrid && m_graphicsScene->hasMainCamera())
-                {
-                    auto& activeCamera = m_graphicsScene->getMainCamera();
-                    const nau::math::Matrix4 viewProjectionMatrix = activeCamera.getViewProjectionMatrix();
-                    shader_globals::setVariable("worldViewPos", &activeCamera.worldPosition);
-                    shader_globals::setVariable("vp", &viewProjectionMatrix);
-                    m_gridMaterial->bind();
-                    d3d::draw(PRIM_TRISTRIP, 0, 2);
-                }
             };
         }));
 
@@ -255,6 +245,7 @@ namespace nau::render
 
                 if (m_graphicsScene)
                 {
+                    d3d::set_depth(m_gBuffer->getDepth(), DepthAccess::RW);
                     m_graphicsScene->renderSceneDebug();
                 }
             };

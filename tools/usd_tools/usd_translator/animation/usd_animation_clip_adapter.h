@@ -35,7 +35,7 @@ namespace UsdTranslator
         void destroySceneObject() override;
 
         void setupAnimationClip(const pxr::UsdPrim& clipPrim, nau::animation::AnimationComponent* component);
-        nau::async::Task<> setupAnimationSkel(const pxr::UsdPrim& skelPrim, nau::animation::AnimationComponent* component, nau::Uid uid);
+        void setupAnimationSkel(const pxr::UsdPrim& skelPrim, nau::animation::AnimationComponent* component, nau::Uid uid);
 
     private:
         nau::scene::ObjectWeakRef<nau::scene::SceneObject> m_obj = nullptr;

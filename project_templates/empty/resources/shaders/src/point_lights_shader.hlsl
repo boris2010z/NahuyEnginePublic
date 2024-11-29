@@ -1,3 +1,6 @@
+// Copyright 2024 N-GINN LLC. All rights reserved.
+// Copyright (C) 2024  Gaijin Games KFT.  All rights reserved
+
 #include "clustered/point_light.hlsli"
 
 struct VsInput
@@ -23,6 +26,14 @@ SYSTEM_CBUFFER(Lights) :
     uint4 omni_lights_count;
     RenderOmniLight omni_lights_cb[MAX_OMNI_LIGHTS];
 };
+
+
+#include "gbuffer_read.hlsli"
+
+float readGbufferDepth(float2 tc)
+{
+    return depth_gbuf.SampleLevel(default_sampler, float4(tc, 0, 0).xy, float4(tc, 0, 0).w).r;
+}
 
 half3 perform_point_light(float3 worldPos, float3 view, float NoV, ProcessedGbuffer gbuffer, half3 specularColor, half dynamicLightsSpecularStrength, half ao, float4 pos_and_radius, float4 color_and_attenuation, float4 shadowTcToAtlas, float2 screenpos)
 {
@@ -193,6 +204,8 @@ VsOutput deferred_lights_vs(VsInput input, uint omni_light_index : SV_InstanceID
 #endif
     return output;
 }
+
+
 
 float4 deferred_lights_ps(VsOutput input) :
     SV_Target

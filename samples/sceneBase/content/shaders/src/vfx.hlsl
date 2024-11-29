@@ -26,8 +26,8 @@ GLOBAL_CBUFFER(SceneBuffer) : register(b0)
 
 GLOBAL_CBUFFER(AtlasBuffer) : register(b1)
 {
-    int columns;
-    int rows;
+    int frames_y;
+    int frames_x;
 };
 
 VsVFXOutput VSMain(VsInput input, uint instanceId : SV_InstanceID)
@@ -51,6 +51,8 @@ VsVFXOutput VSMain(VsInput input, uint instanceId : SV_InstanceID)
     output.color = instanceData.color;
     output.frameID = instanceData.frameID;
     output.texCoord = input.texCoord;
+    output.columns = frames_y;
+    output.rows = frames_x;
 
     return output;
 }
@@ -58,6 +60,12 @@ VsVFXOutput VSMain(VsInput input, uint instanceId : SV_InstanceID)
 float4 PSMain(VsVFXOutput input) : SV_Target
 {
     int currentFrame = input.frameID;
+
+    int columns = input.columns;
+    int rows = input.rows;
+
+    //int columns = 1;
+    //int rows = 1;
 
     float frameWidth = 1.0 / columns;
     float frameHeight = 1.0 / rows;

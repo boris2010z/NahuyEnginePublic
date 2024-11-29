@@ -3,7 +3,6 @@ set(TargetName UsdTranslator)
 set(Sources
     animation/usd_animation_clip_adapter.cpp
     animation/usd_animation_clip_composer.cpp
-    animation/usd_skeleton_animation_adapter.cpp
     usd_audio_adapter.cpp
     usd_component_adapter.cpp
     usd_mesh_adapter.cpp
@@ -38,7 +37,6 @@ set(Sources
 set(Headers
     animation/usd_animation_clip_adapter.h
     animation/usd_animation_clip_composer.h
-    animation/usd_skeleton_animation_adapter.h
     usd_audio_adapter.h
     usd_component_adapter.h
     usd_prim_adapter.h

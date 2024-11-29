@@ -41,17 +41,20 @@ namespace nau::async
             return;
         }
 
-        lock_(m_mutex);
-        NAU_ASSERT(!m_isDisposed);
-
         CoreTask* const coreTask = async::getCoreTask(task);
         NAU_FATAL(coreTask);
         if (coreTask->isReady())
         {
+            // Even if a task is not ready here, it may become so immediately after (or in the process of) placing it in the collection.
+            // Therefore, the scope of the mutex lock must be limited.
             return;
         }
 
-        m_tasks.emplace_back(std::move(task));
+        {
+            lock_(m_mutex);
+            NAU_ASSERT(!m_isDisposed);
+            m_tasks.emplace_back(std::move(task));
+        }
 
         coreTask->setReadyCallback([](void* selfPtr, void* taskPtr) noexcept
         {

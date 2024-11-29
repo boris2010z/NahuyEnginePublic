@@ -95,9 +95,16 @@ namespace UsdTranslator
             co_return;
 
         auto& vfxComponent = m_obj->getRootComponent<nau::vfx::VFXComponent>();
-        vfxComponent.forceBLKUpdate();
 
-        m_vfxTimeStamp = metaInfo->lastModified;
+        if (m_vfxTimeStamp == metaInfo->lastModified)
+        {
+            vfxComponent.forcePositionUpdate();
+        }
+        else
+        {
+            vfxComponent.forceBLKUpdate();
+            m_vfxTimeStamp = metaInfo->lastModified;
+        }
     }
 
     std::string_view VFXAdapter::getType() const
@@ -130,10 +137,12 @@ namespace UsdTranslator
         component->setName(prim.GetName().GetText());
         auto& vfxComponent = component->getRootComponent<nau::vfx::VFXComponent>();
         m_path = eastl::string((dbPath().string() + "\\").c_str() + metaInfo->dbPath);
-        vfxComponent.setAssetPath(m_path);
+
+        vfxComponent.setAssetPath(metaInfo->dbPath);
 
         m_obj = *component;
-        //co_await update();
+
+        co_await update();
         co_return co_await dest->attachChildAsync(std::move(component));
     }
 

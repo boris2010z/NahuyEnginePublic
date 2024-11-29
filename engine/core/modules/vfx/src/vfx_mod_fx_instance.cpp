@@ -348,7 +348,7 @@ namespace nau::vfx::modfx
 
     void VFXModFXInstance::render(const nau::math::Matrix4& view, const nau::math::Matrix4& projection)
     {
-        if (m_actualParticlePoolSize == 0)
+        if (m_actualParticlePoolSize == 0 || !m_assetTexture || !m_material)
         {
             return;
         }
@@ -358,8 +358,8 @@ namespace nau::vfx::modfx
         shader_globals::setVariable("view", &view);
         shader_globals::setVariable("projection", &projection);
 
-        shader_globals::setVariable("columns", &m_texture.frames_y);
-        shader_globals::setVariable("rows", &m_texture.frames_x);
+        //shader_globals::setVariable("frames_y", &m_texture.frames_y);
+        //shader_globals::setVariable("frames_x", &m_texture.frames_x);
 
         nau::Ptr<TextureAssetView> textureView;
         m_assetTexture->getTyped<TextureAssetView>(textureView);
@@ -368,9 +368,6 @@ namespace nau::vfx::modfx
 
         m_material->bindPipeline("default");
         
-        //m_material->setProperty("default", "columns", m_texture.frames_y);
-        //m_material->setProperty("default", "rows", m_texture.frames_x);
-
         d3d::setvsrc(0, m_positionBuffer, sizeof(nau::math::float3));
         d3d::setvsrc(1, m_normalBuffer, sizeof(nau::math::float3));
         d3d::setvsrc(2, m_texCoordBuffer, sizeof(nau::math::float2));

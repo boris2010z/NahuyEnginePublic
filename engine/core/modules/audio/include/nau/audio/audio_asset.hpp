@@ -17,10 +17,25 @@ NAU_AUDIO_BEGIN
 
 using AssetChangeCallback = std::function<void()>;
 
+/**
+ * @brief Provides an interface for managing an audio asset.
+ */
 class IAudioAsset : public Subscribable<AssetChangeCallback>
 {
 public:
+
+    /**
+     * @brief Creates a copy of the audio asset.
+     * 
+     * @return Copy of this audio asset.
+     */
     virtual AudioSourcePtr instantiate() = 0;
+
+    /**
+     * @brief Retrieves the audio asset name.
+     * 
+     * @return  Name of the audio asset.
+     */
     virtual eastl::string name() const = 0;
 };
 

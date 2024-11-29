@@ -30,6 +30,16 @@ namespace nau::scene
         return m_screenPercentageSize;
     }
 
+    void BillboardComponent::setVisibility(bool isVisible)
+    {
+        m_isVisible = isVisible;
+    }
+
+    bool BillboardComponent::getVisibility() const
+    {
+        return m_isVisible;
+    }
+
     bool BillboardComponent::isTextureDirty() const
     {
         return isBillboardTextureDirty;

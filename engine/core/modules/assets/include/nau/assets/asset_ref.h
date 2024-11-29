@@ -198,6 +198,8 @@ namespace nau
 
         AssetRefBase& operator=(std::nullptr_t) noexcept;
 
+        IAssetDescriptor::Ptr getAssetDiscriptor() const { return m_assetDescriptor; };
+
     protected:
         IAssetDescriptor::Ptr m_assetDescriptor;
 

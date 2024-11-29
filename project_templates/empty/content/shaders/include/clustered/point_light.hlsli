@@ -104,13 +104,6 @@ half calc_micro_shadow(half NoL, half AO)
     return (half) saturate(abs(NoL) + half(2.0) * pow2(AO) - half(1.0));
 }
 
-#include "gbuffer_read.hlsli"
-
-float readGbufferDepth(float2 tc)
-{
-    return depth_gbuf.SampleLevel(default_sampler, float4(tc, 0, 0).xy, float4(tc, 0, 0).w).r;
-}
-
 float3x3 axis_matrix(float3 right, float3 up, float3 forward)
 {
     float3 xaxis = right;

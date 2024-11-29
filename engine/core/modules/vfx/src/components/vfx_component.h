@@ -9,6 +9,7 @@
 #include "nau/scene/components/scene_component.h"
 #include "../vfx_mod_fx_instance.h"
 #include "nau/assets/reloadable_asset_view.h"
+#include <filesystem>
 
 namespace nau::vfx
 {
@@ -42,13 +43,21 @@ namespace nau::vfx
         
         void forceUpdateTexture(ReloadableAssetView::Ptr texture);
         void forceBLKUpdate();
+        void forcePositionUpdate();
+
+    private:
+        std::filesystem::path dbPath();
+        eastl::string resolvePath(const eastl::string& assetPath);
 
     private:
         std::shared_ptr<nau::vfx::modfx::VFXModFXInstance> m_vfxInstance;
         bool m_isVFXInScene = false;
 
+        nau::DataBlock m_blk;
+
         nau::MaterialAssetRef defaultMaterialRef{"file:/res/materials/vfx.nmat_json"};
 
         eastl::string m_assetPath;
+        eastl::string m_cachedAssetPath;
     };
 }  // namespace nau::vfx

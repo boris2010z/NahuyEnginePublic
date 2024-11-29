@@ -7,9 +7,27 @@
 
 namespace nau
 {
+    struct BillboardData
+    {
+        nau::math::Vector4 worldPositionScPercentsize;
+        nau::Uid uid;
+        nau::math::float4 aspectRatio;
+    };
+
+
     BillboardsManager::BillboardsManager(nau::Ptr<nau::MaterialAssetView> material)
     {
         m_billboardMaterial = material;
+        dataBuffer = d3d::create_cb(sizeof(BillboardData), SBCF_DYNAMIC, u8"billboard buffer");
+    }
+
+    BillboardsManager::~BillboardsManager()
+    {
+        if (dataBuffer)
+        {
+            dataBuffer->destroy();
+            dataBuffer = nullptr;
+        }
     }
 
 
@@ -56,23 +74,29 @@ namespace nau
             aspectRatio = width / static_cast<float>(height);
         }
 
-        m_billboardMaterial->setProperty("default", "aspectRatio", aspectRatio);
+        BillboardData data;
+        data.aspectRatio = nau::math::float4(aspectRatio, 0.0f, 0.0f, 0.0f);
 
         for (const auto billboard : m_billboards)
         {
             if (const auto bill = billboard.lock())
             {
+                if (!bill->isVisible)
+                {
+                    continue;
+                }
+
                 NAU_ASSERT(bill->texture);
                 nau::Ptr<TextureAssetView> textureView;
                 bill->texture->getTyped<TextureAssetView>(textureView);
                 NAU_ASSERT(textureView->getTexture());
 
-                math::IVector4 vuid = {};
-                memcpy(&vuid, &bill->uid, sizeof(vuid));
+                data.worldPositionScPercentsize = nau::math::Vector4(bill->worldPosition, bill->screenPercentageSize);
+                data.uid = bill->uid;
 
-                m_billboardMaterial->setProperty("default", "uid", vuid);
-                m_billboardMaterial->setProperty("default", "scPercentSize", bill->screenPercentageSize);
-                m_billboardMaterial->setProperty("default", "worldPosition", bill->worldPosition);
+                dataBuffer->updateDataWithLock(0, sizeof(BillboardData), &data, VBLOCK_DISCARD);
+
+                m_billboardMaterial->setCBuffer("default", "SB_BillboardBuffer", dataBuffer);
                 m_billboardMaterial->setTexture("default", "tex", textureView->getTexture());
 
                 m_billboardMaterial->bind();

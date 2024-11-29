@@ -329,6 +329,12 @@ namespace nau::csm
     {
         closeDepthShadow();
         destroyOverrides();
+
+        if (csmBuffer)
+        {
+            csmBuffer->destroy();
+            csmBuffer = nullptr;
+        }
     }
 
 

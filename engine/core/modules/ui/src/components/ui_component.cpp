@@ -47,8 +47,11 @@ namespace nau::ui
             co_return;
         }
 
+        const static std::string assetPahtPrefix = "file:/res/";
+        std::string fullAssetPath = assetPahtPrefix + m_uiAssetPath;
+
         {
-            auto assetPtr = getServiceProvider().get<IAssetManager>().findAsset({m_uiAssetPath.c_str()});
+            auto assetPtr = getServiceProvider().get<IAssetManager>().findAsset({fullAssetPath.c_str()});
             if (assetPtr)
             {
                 assetPtr->unload();
@@ -71,9 +74,9 @@ namespace nau::ui
 
         clearCanvas();
 
-        if (AssetPath::isValid(m_uiAssetPath.c_str()))
+        if (AssetPath::isValid(fullAssetPath.c_str()))
         {
-            co_await UiCanvasBuilder::loadIntoScene(m_canvas, {m_uiAssetPath.c_str()});
+            co_await UiCanvasBuilder::loadIntoScene(m_canvas, {fullAssetPath.c_str()});
             nau::getServiceProvider().get<nau::ui::UiManager>().addCanvas(m_canvas);
             m_canvasInScene = true;
         }

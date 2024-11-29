@@ -11,12 +11,12 @@ GLOBAL_CBUFFER(GlobalBuffer) : register(b0)
     float4x4 vp;
 };
 
-cbuffer BillboardBuffer : register(b1)
+SYSTEM_CBUFFER(BillboardBuffer) : register(b1)
 {
     float3 worldPosition;
     float scPercentSize;
     uint4 uid;
-    float aspectRatio;
+    float4 aspectRatio;
 };
 
 struct VsOutput
@@ -35,7 +35,7 @@ VsOutput billboardsVS(uint id : SV_VertexID)
     output.position = output.position / output.position.w; // to ndc we go
 
     float2 offset = output.texCoord * float2(2*scPercentSize, -2*scPercentSize) + float2(-scPercentSize, scPercentSize);
-    offset.y *= aspectRatio;
+    offset.y *= aspectRatio.x;
     output.position.xy += offset;
 
     output.uid = uid;

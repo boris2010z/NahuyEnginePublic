@@ -41,7 +41,14 @@ namespace nau::threading
             const std::thread::id NoThread{};
             const std::thread::id ThisThread = std::this_thread::get_id();
 
-            NAU_FATAL(m_threadOwner.load(std::memory_order_relaxed) != ThisThread , "Recursive mutex acquisition is not allowed");
+#ifdef NAU_ASSERT_ENABLED
+            // Check same thread lock twice (which is not supported by this kind of mutex)
+            if (m_threadOwner.load(std::memory_order_relaxed) == ThisThread)
+            {
+                NAU_FATAL_FAILURE("Recursive mutex acquisition is not allowed");
+                return;
+            }
+#endif
 
             while(true)
             {

@@ -153,7 +153,7 @@ namespace nau
 
         auto& sceneManager = getServiceProvider().get<nau::scene::ISceneManager>();
         m_defaultWorld = sceneManager.getDefaultWorld().getUid();
-        m_worldToGraphicScene[m_defaultWorld] = eastl::make_unique<GraphicsScene>();
+        m_worldToGraphicScene[m_defaultWorld] = eastl::make_unique<GraphicsScene>(m_defaultWorld);
         co_await m_worldToGraphicScene[m_defaultWorld]->initialize();
 
         Ptr<nau::render::RenderWindowImpl> rendWindow = rtti::createInstance<nau::render::RenderWindowImpl>();
@@ -439,7 +439,7 @@ namespace nau
         if (worldEntry == m_worldToGraphicScene.end())
         {
             [[maybe_unused]] bool emplaceOk;
-            eastl::tie(worldEntry, emplaceOk) = m_worldToGraphicScene.emplace(worldUid, eastl::make_unique<GraphicsScene>());
+            eastl::tie(worldEntry, emplaceOk) = m_worldToGraphicScene.emplace(worldUid, eastl::make_unique<GraphicsScene>(worldUid));
             co_await worldEntry->second->initialize();
         }
 

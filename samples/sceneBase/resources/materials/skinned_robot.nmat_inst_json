@@ -1,7 +1,7 @@
 {
   "name": "skinned_robot",
 
-  "master": "file:/content/materials/embedded/standard_skinned.nmat_json",
+  "master": "file:/res/materials/embedded/standard_skinned.nmat_json",
 
   "pipelines": {
 

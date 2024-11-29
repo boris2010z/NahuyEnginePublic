@@ -1,7 +1,6 @@
 // Copyright 2024 N-GINN LLC. All rights reserved.
 // Use of this source code is governed by a BSD-3 Clause license that can be found in the LICENSE file.
 
-
 #include "graphics_scene.h"
 
 #include <nau/service/service_provider.h>
@@ -26,7 +25,8 @@
 
 namespace nau
 {
-    GraphicsScene::GraphicsScene()
+    GraphicsScene::GraphicsScene(Uid worldUid) :
+        m_worldUid(worldUid)
     {
         m_renderScene = nau::rtti::createInstance<nau::RenderScene>();
         auto mainView = eastl::make_shared<nau::RenderView>("Main View");
@@ -51,14 +51,13 @@ namespace nau
         auto translucentView = eastl::make_shared<nau::RenderView>("Main View (Translucent)");
         translucentView->addTag(nau::RenderScene::Tags::translucentTag);
 
-        auto translucentFilter = eastl::function<bool(const MaterialAssetView::Ptr)>([](const MaterialAssetView::Ptr material) 
+        auto translucentFilter = eastl::function<bool(const MaterialAssetView::Ptr)>([](const MaterialAssetView::Ptr material)
         {
             nau::BlendMode mode = material->getBlendMode("default");
             return mode != nau::BlendMode::Opaque && mode != nau::BlendMode::Masked;
         });
         translucentView->setMaterialFilter(translucentFilter);
         m_renderScene->addView(translucentView);
-
 
         m_renderScene->addManager(nau::rtti::createInstance<nau::StaticMeshManager>());
         m_renderScene->addManager(nau::rtti::createInstance<nau::SkinnedMeshManager>());
@@ -432,7 +431,6 @@ namespace nau
         {
             return;
         }
-        static uint32_t lightId = 0;
 
         auto& activeCamera = getMainCamera();
 
@@ -456,6 +454,31 @@ namespace nau
         m_lights.renderOtherLights();
     }
 
+    void GraphicsScene::renderDebugLights()
+    {
+        if (!hasMainCamera())
+        {
+            return;
+        }
+
+        if (!m_lights.hasDebugLights())
+        {
+            return;
+        }
+
+        d3d::setwire(true);
+
+        auto& activeCamera = getMainCamera();
+
+        auto mvp = activeCamera.getViewProjectionMatrix();
+        shader_globals::setVariable("mvp", &mvp);
+        auto world_view_pos = math::Vector4(activeCamera.getProperties().getTranslation());
+        shader_globals::setVariable("world_view_pos", &world_view_pos);
+
+        m_lights.renderDebugLights();
+        d3d::setwire(false);
+    }
+
     void GraphicsScene::renderSceneDebug()
     {
         if (!hasMainCamera())
@@ -467,6 +490,7 @@ namespace nau
         const nau::math::Matrix4 viewProjectionMatrix = activeCamera.getViewProjectionMatrix();
 
         getDebugRenderer().draw(viewProjectionMatrix, 1);
+        renderDebugLights();
     }
 
     void GraphicsScene::renderBillboards()
@@ -486,7 +510,7 @@ namespace nau
     {
         using namespace nau::scene;
 
-// TODO Tracy        NAU_CPU_SCOPED_TAG(nau::PerfTag::Core);
+        // TODO Tracy        NAU_CPU_SCOPED_TAG(nau::PerfTag::Core);
         if (!getServiceProvider().has<ISceneManagerInternal>())
         {
             return;
@@ -497,7 +521,7 @@ namespace nau
         {
             if (Component* const component = sceneManager.findComponent(m.componentUid))
             {
-                //StaticMeshNode::updateFromScene(m, component->as<const SceneComponent&>());
+                // StaticMeshNode::updateFromScene(m, component->as<const SceneComponent&>());
 
                 StaticMeshComponent& staticMeshComponent = component->as<StaticMeshComponent&>();
                 if ((staticMeshComponent.getDirtyFlags() & static_cast<uint32_t>(StaticMeshComponent::DirtyFlags::Material)) && staticMeshComponent.getMaterial())
@@ -554,6 +578,7 @@ namespace nau
                 BillboardComponent& billComponent = component->as<BillboardComponent&>();
                 bill.billboardHandle->setScreenPercentageSize(billComponent.getScreenPercentageSize());
                 bill.billboardHandle->setWorldPos(billComponent.getWorldTransform().getTranslation());
+                bill.billboardHandle->setVisibility(billComponent.getVisibility());
                 if (billComponent.isTextureDirty())
                 {
                     bill.overrideTexture = billComponent.getTextureRef();
@@ -583,7 +608,8 @@ namespace nau
                                                          omnilightComponent.getColor(),
                                                          omnilightComponent.getRadius(),
                                                          omnilightComponent.getAttenuation(),
-                                                         omnilightComponent.getIntensity()});
+                                                         omnilightComponent.getIntensity(),
+                                                         omnilightComponent.getDebugDraw()});
                 }
                 if (component->is<SpotlightComponent>())
                 {
@@ -597,7 +623,8 @@ namespace nau
                                                          spotlightComponent.getAttenuation(),
                                                          math::float3(spotlightComponent.getWorldTransform().transformVector(spotlightComponent.getDirection())),
                                                          spotlightComponent.getAngle(),
-                                                         false});
+                                                         false,
+                                                         spotlightComponent.getDebugDraw()});
                 }
                 // TODO: SpotlightComponent
             }
@@ -628,55 +655,37 @@ namespace nau
         {
             NAU_LOG_VERBOSE("Found new camera:({}), uid:({}) from world:({})", cam.getCameraName(), toString(cam.getCameraUid()), toString(cam.getWorldUid()));
 
-            CameraNode& camera = m_cameras.emplace_back();
-            camera.cameraProperties = nau::Ptr{&cam};
+            [[maybe_unused]] auto [iter, emplaceCameraOk] = m_cameras.emplace(cam.getCameraUid(), CameraNode{.cameraProperties = Ptr{&cam}});
+            NAU_ASSERT(emplaceCameraOk);
         };
 
         auto onCameraRemoved = [&](const ICameraProperties& cam)
         {
-            const size_t count = eastl::erase_if(m_cameras, [camUid = cam.getCameraUid()](const CameraNode& camNode)
-            {
-                return camNode.cameraProperties->getCameraUid() == camUid;
-            });
-
-            if (count > 0)
-            {
-                m_activeCamera.reset();
-                NAU_LOG_VERBOSE("Remove camera:({}), uid:({}) from world:({})", cam.getCameraName(), toString(cam.getCameraUid()), toString(cam.getWorldUid()));
-            }
+            m_cameras.erase(cam.getCameraUid());
         };
 
         getServiceProvider().get<ICameraManager>().syncCameras(m_allInGameCameras, onCameraAdded, onCameraRemoved);
-
-        constexpr eastl::string_view MainCameraName = "Camera.Main";
-
-        for (size_t i = 0, count = m_cameras.size(); i < count; ++i)
+        for (auto& [uid, camera]: m_cameras)
         {
-            CameraNode& camera = m_cameras[i];
             camera.updateFromCamera();
-            const eastl::string_view cameraName = !m_activeCamera ? camera.getProperties().getCameraName() : eastl::string_view{};
-            if (cameraName == MainCameraName)
-            {
-                m_activeCamera = i;
-            }
         }
     }
 
     CameraNode& GraphicsScene::getMainCamera()
     {
         NAU_ASSERT(!m_cameras.empty());
-        if (m_activeCamera)
+
+        Ptr<scene::ICameraProperties> cameraProps = m_allInGameCameras.getWorldMainCamera(m_worldUid);
+        if (cameraProps)
         {
-            if (*m_activeCamera < m_cameras.size())
+            auto camIter = m_cameras.find(cameraProps->getCameraUid());
+            if (camIter != m_cameras.end())
             {
-                return m_cameras[*m_activeCamera];
+                return (camIter->second);
             }
-
-            m_activeCamera.reset();
-            NAU_LOG_WARNING("Invalid camera index ({})", *m_activeCamera);
         }
-
-        return m_cameras.front();
+    
+        return m_cameras.begin()->second;
     }
 
     bool GraphicsScene::hasMainCamera() const

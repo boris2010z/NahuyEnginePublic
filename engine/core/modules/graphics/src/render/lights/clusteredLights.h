@@ -64,11 +64,15 @@ namespace nau::render
         void toggleTiledLights(bool use_tiled);
         bool hasDeferredLights() const
         {
-            return renderFarOmniLights.size() + renderFarSpotLights.size() != 0;
+            return (renderFarOmniLights.size() + renderFarSpotLights.size()) != 0;
+        }
+        bool hasDebugLights() const
+        {
+            return (debugOmniLights.size() + debugSpotLights.size()) != 0;
         }
         bool hasClusteredLights() const
         {
-            return clustersOmniGrid.size() + clustersSpotGrid.size() != 0;
+            return (clustersOmniGrid.size() + clustersSpotGrid.size()) != 0;
         }
         int getVisibleNotClusteredSpotsCount() const
         {
@@ -114,8 +118,6 @@ namespace nau::render
         void setOutOfFrustumLightsToShader();
         void setInsideOfFrustumLightsToShader();
 
-        void renderDebugSpotLights();
-        void renderDebugOmniLights();
         void renderDebugLights();
         void renderDebugLightsBboxes();
         void drawDebugClusters(int slice);
@@ -199,8 +201,8 @@ namespace nau::render
             return lightsInitialized;
         }
 
-        void setNeedSsss(bool need_ssss);
         /* TODO: Light shadows
+        void setNeedSsss(bool need_ssss);
         void setMaxShadowsToUpdateOnFrame(int max_shadows)
         {
             maxShadowsToUpdateOnFrame = max_shadows;
@@ -308,14 +310,18 @@ namespace nau::render
             return id;
         }
 
-        eastl::vector<RenderOmniLight> renderOmniLights, renderFarOmniLights;
-        eastl::vector<RenderSpotLight> renderSpotLights, renderFarSpotLights;
+        eastl::vector<RenderOmniLight> renderOmniLights, renderFarOmniLights, debugOmniLights;
+        eastl::vector<RenderSpotLight> renderSpotLights, renderFarSpotLights, debugSpotLights;
         eastl::vector<math::Matrix4> renderSpotLightsShadows;
         eastl::vector<uint32_t> clustersOmniGrid, clustersSpotGrid;
         eastl::vector<SpotLightsManager::mask_type_t> visibleSpotLightsMasks;
         eastl::vector<OmniLightsManager::mask_type_t> visibleOmniLightsMasks;
         ReallocatableConstantBuffer<sizeof(RenderOmniLight) / 16, true> visibleOmniLightsCB, visibleFarOmniLightsCB;
         ReallocatableConstantBuffer<sizeof(RenderSpotLight) / 16, true> visibleSpotLightsCB, visibleFarSpotLightsCB;
+
+        ReallocatableConstantBuffer<sizeof(RenderOmniLight) / 16, true> debugOmniLightsCB;
+        ReallocatableConstantBuffer<sizeof(RenderSpotLight) / 16, true> debugSpotLightsCB;
+
         ReallocatableConstantBuffer<1, false> commonLightShadowsBufferCB;
 
         /* TODO: redo Dagor resources
@@ -343,8 +349,7 @@ namespace nau::render
         void validateDensity(uint32_t words);
         uint32_t lightsGridFrame = 0, allocatedWords = 0;
 
-        MaterialAssetView::Ptr pointLightsMat, pointLightsDebugMat;
-        MaterialAssetView::Ptr spotLightsMat, spotLightsDebugMat;
+        MaterialAssetView::Ptr lightsMat;
 
         uint32_t v_count = 0, f_count = 0;
         Sbuffer* coneSphereVb = nullptr;
@@ -397,12 +402,9 @@ namespace nau::render
         */
 
         void initConeSphere();
-        async::Task<> initOmni();
-        async::Task<> initSpot();
-        async::Task<> initDebugOmni();
-        void closeDebugOmni();
-        void closeDebugSpot();
-        async::Task<> initDebugSpot();
+        async::Task<> initLightMaterial();
+        void closeLightMaterial();
+
         void fillBuffers();
 
         void setBuffers();

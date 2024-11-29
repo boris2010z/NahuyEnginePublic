@@ -1,4 +1,3 @@
-// test_thread_local_value.cpp
 //
 // Copyright (c) N-GINN LLC., 2023-2025. All rights reserved.
 //

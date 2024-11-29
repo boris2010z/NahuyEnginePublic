@@ -17,7 +17,7 @@ namespace nau::scene
 
         NAU_CLASS_FIELDS(
             CLASS_NAMED_FIELD(m_textureAsset, "texture"),
-            CLASS_NAMED_FIELD(m_enviIntensity, "environment intensity"))
+            CLASS_NAMED_FIELD(m_enviIntensity, "environment_intensity"))
 
     public:
         TextureAssetRef getTextureAsset() const;

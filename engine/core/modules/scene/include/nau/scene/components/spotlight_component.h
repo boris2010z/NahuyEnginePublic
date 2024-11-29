@@ -24,7 +24,8 @@ namespace nau::scene
             CLASS_NAMED_FIELD(m_radius, "radius"),
             CLASS_NAMED_FIELD(m_angle, "angle"),
             CLASS_NAMED_FIELD(m_intensity, "intensity"),
-            CLASS_NAMED_FIELD(m_attenuation, "attenuation"), )
+            CLASS_NAMED_FIELD(m_attenuation, "attenuation"),
+            CLASS_NAMED_FIELD(m_debugDraw, "debugDraw"), )
     public:
         math::Vector3 getShift() const;
         math::Vector3 getDirection() const;
@@ -33,6 +34,7 @@ namespace nau::scene
         float getAttenuation() const;
         float getAngle() const;
         float getIntensity() const;
+        bool getDebugDraw() const;;
 
         void setShift(math::Vector3);
         void setDirection(math::Vector3);
@@ -41,6 +43,7 @@ namespace nau::scene
         void setIntensity(float);
         void setAttenuation(float);
         void setAngle(float);
+        void setDebugDraw(bool);
 
     private:
         math::Vector3 m_shift = {0, 0, 0};
@@ -55,5 +58,7 @@ namespace nau::scene
         float m_attenuation = 0.2;
         float m_angle = 0.6*std::numbers::pi_v<float>;
         math::Vector3 m_direction = {0, 0, 1};
+
+        bool m_debugDraw = false;
     };
 }  // namespace nau::scene

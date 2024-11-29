@@ -45,24 +45,27 @@ namespace nau::animation
 
     async::Task<> AnimationInstance::load()
     {
-        if (m_animation)
+        if (!m_isLoaded)
         {
-            m_isLoaded = true;
-        }
-        else if (m_animationAsset)
-        {
-            using namespace data;
-            nau::Ptr<AnimationAssetView> loadedAnimation = co_await m_animationAsset.getAssetViewTyped<AnimationAssetView>();
-            m_animation = loadedAnimation->getAnimation();
-            m_animationState.interpolationMethod = loadedAnimation->getPlaybackData().interpolationMethod;
+            if (m_animation)
+            {
+                m_isLoaded = true;
+            }
+            else if (m_animationAsset)
+            {
+                using namespace data;
+                nau::Ptr<AnimationAssetView> loadedAnimation = co_await m_animationAsset.getAssetViewTyped<AnimationAssetView>();
+                m_animation = loadedAnimation->getAnimation();
+                m_animationState.interpolationMethod = loadedAnimation->getPlaybackData().interpolationMethod;
 
-            m_isLoaded = m_animation != nullptr;
-        }
+                m_isLoaded = m_animation != nullptr;
+            }
 
-        if (m_isLoaded)
-        {
-            m_animationState.player = m_animation->createPlayer(*this);
-            m_animationState.forcedFrame = 0;
+            if (m_isLoaded)
+            {
+                m_animationState.player = m_animation->createPlayer(*this);
+                m_animationState.forcedFrame = 0;
+            }
         }
     }
 

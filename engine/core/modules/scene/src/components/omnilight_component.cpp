@@ -60,4 +60,15 @@ namespace nau::scene
     {
         m_intensity = intensity;
     }
+
+    bool OmnilightComponent::getDebugDraw() const
+    {
+        return m_debugDraw;
+    }
+
+    void OmnilightComponent::setDebugDraw(bool debugDraw)
+    {
+        m_debugDraw = debugDraw;
+    }
+
 }  // namespace nau::scene

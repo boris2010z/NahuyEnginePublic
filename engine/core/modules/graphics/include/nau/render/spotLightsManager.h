@@ -119,6 +119,7 @@ namespace nau::render
         {
             return rawLights[id];
         }
+
         void setLight(unsigned int id, const Light& l)
         {
             if (isnan(l.pos_radius.x + l.pos_radius.y + l.pos_radius.z + l.pos_radius.w))
@@ -130,6 +131,7 @@ namespace nau::render
             resetLightOptimization(id);
             updateBoundingSphere(id);
         }
+
         RenderSpotLight getRenderLight(unsigned int id) const
         {
             const Light& l = rawLights[id];

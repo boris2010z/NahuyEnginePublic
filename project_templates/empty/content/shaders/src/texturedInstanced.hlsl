@@ -61,7 +61,7 @@ VsOutputZPrepass zprepassSkinnedVSMain(VsInputZPrepassSkinned input, uint instID
         }
     }
 
-    output.position = mul(vp, mul(worldMatrix, skinnedPos));
+    output.position = mul(vp, skinnedPos);
 
     return output;
 }

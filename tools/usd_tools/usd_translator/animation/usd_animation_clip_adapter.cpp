@@ -6,7 +6,6 @@
 #include "usd_translator/usd_prim_translator.h"
 #include "usd_translator/usd_stage_translator.h"
 #include "usd_animation_clip_composer.h"
-#include "usd_skeleton_animation_adapter.h"
 
 #include "nau/NauAnimationClipAsset/nauAnimationController.h"
 #include "nau/NauAnimationClipAsset/nauAnimationClip.h"
@@ -27,6 +26,7 @@
 #include "nau/asset_tools/db_manager.h"
 #include "nau/assets/asset_db.h"
 #include "nau/assets/asset_descriptor_factory.h"
+#include "nau/assets/skeleton_asset_accessor.h"
 #include "nau/io/file_system.h"
 #include "nau/io/virtual_file_system.h"
 
@@ -63,9 +63,8 @@ namespace UsdTranslator
             auto rootLayerId = rootLayer ? rootLayer->GetIdentifier() : "";
 
             eastl::string animNameStr = eastl::string{ animationName };
-            eastl::string sourceTrackAssetPath = std::format("{}+[kfanimation:{}]",
-                rootLayerId != "" ? FileSystemExtensions::getRelativeAssetPath(rootLayerId).string() : "",
-                animNameStr.c_str()).c_str();
+            eastl::string sourceTrackAssetPath = std::format("{}+[kfanimation]",
+                rootLayerId.empty() ? rootLayerId : FileSystemExtensions::getRelativeAssetPath(rootLayerId).string()).c_str();
 
             auto& dbManager = AssetDatabaseManager::instance();
             auto sourceTrackAssetUid = dbManager.findIf(sourceTrackAssetPath.c_str());
@@ -363,7 +362,7 @@ namespace UsdTranslator
         }
     }
 
-    nau::async::Task<> AnimationControllerAdapter::setupAnimationSkel(const pxr::UsdPrim& skelPrim, nau::animation::AnimationComponent* component, nau::Uid uid)
+    void AnimationControllerAdapter::setupAnimationSkel(const pxr::UsdPrim& skelPrim, nau::animation::AnimationComponent* component, nau::Uid uid)
     {
         nau::Ptr<nau::animation::AnimationMixer> animMixer = rtti::createInstance<nau::animation::SkeletalAnimationMixer>().get();
         nau::Ptr<nau::animation::BlendAnimationController> blendController = rtti::createInstance<nau::animation::BlendAnimationController>(animMixer);
@@ -372,18 +371,15 @@ namespace UsdTranslator
         auto* skeleton = m_obj->findFirstComponent<nau::SkeletonComponent>();
         if (skeleton == nullptr)
         {
-            auto&& ref = co_await m_obj->addComponentAsync<nau::SkeletonComponent>();
-            skeleton = ref.get();
+            skeleton = &m_obj->addComponent<nau::SkeletonComponent>();
         }
-
         auto skeletonAsset = nau::SkeletonAssetRef
         {
             nau::strings::toStringView(std::format("uid:{}", toString(uid))),
             true
         };
         skeleton->setSkeletonAsset(std::move(skeletonAsset));
-        addSkeletalAnimationToComponent(component, skelPrim);
-        co_return;
+        addSkeletalAnimationToComponent(component, skelPrim);;
     }
 
     [[maybe_unused]] DEFINE_TRANSLATOR(AnimationControllerAdapter, "AnimationController"_tftoken);

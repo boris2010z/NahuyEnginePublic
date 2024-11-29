@@ -194,7 +194,7 @@ namespace nau::render
         const float maxMipLevel = static_cast<float>(reflectionMipLevelCount - 1);
 
         const math::vec3 workgroupSize{CS_ENV_CUBEMAPS_BLOCK_SIZE, CS_ENV_CUBEMAPS_BLOCK_SIZE, 1};
-        std::byte cbData[12];
+        std::byte cbData[16];
 
         for (uint32_t mipLevel = 0; mipLevel < reflectionMipLevelCount; ++mipLevel)
         {
@@ -209,7 +209,7 @@ namespace nau::render
                 std::memcpy(&cbData[8], &roughness, 4);
 
                 d3d::set_rwtex(STAGE_CS, 0, m_reflectionMap, faceIndex, mipLevel, false);
-                d3d::set_const(STAGE_CS, 0, &cbData[0], 3);
+                d3d::set_const(STAGE_CS, 0, &cbData[0], 1);
 
                 d3d::dispatch(groupCount.getX(), groupCount.getY(), groupCount.getZ(), GpuPipeline::ASYNC_COMPUTE);
             }

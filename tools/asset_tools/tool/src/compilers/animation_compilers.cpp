@@ -328,6 +328,7 @@ namespace nau::compilers
                 const std::string& dataTypeStr = dataTypeToken.GetString();
 
                 nau::AnimationDataDescriptor descriptor;
+                descriptor.name = clip.GetPrim().GetName().GetString().c_str();
                 if (dataTypeStr == "Translation")
                 {
                     descriptor.dataType = nau::AnimationDataDescriptor::DataType::Translation;
@@ -361,53 +362,54 @@ namespace nau::compilers
             return nullptr;
         }
 
-        eastl::optional<KeyFrameAnimationAssetData> loadUsdAnimation(pxr::UsdPrim& prim, const std::string& outputPath, const UsdMetaInfo& metaInfo)
+        eastl::optional<KeyFrameAnimationAssetData> loadUsdAnimation(const pxr::UsdPrim& prim, const std::string& outputPath, const UsdMetaInfo& metaInfo)
         {
             KeyFrameAnimationAssetData loadedAsset;
-            bool isLoaded = false;
 
             if (pxr::UsdNauAnimationClip clip{ prim })
             {
                 if (auto clipAsset = compileAnimationTrack(clip, prim))
                 {
                     loadedAsset.addTrack(std::move(clipAsset));
-                    isLoaded = true;
                 }
 
                 return loadedAsset;
             }
 
+            bool isLoaded = false;
+
             for (auto child : prim.GetAllChildren())
             {
                 if (pxr::UsdNauAnimationClip clip{ child })
                 {
+                    isLoaded = true;
+
                     if (auto clipAsset = compileAnimationTrack(clip, child))
                     {
                         loadedAsset.addTrack(std::move(clipAsset));
-                        isLoaded = true;
-
-                        prim = child;
-                        return loadedAsset;
                     }
                 }
             }
 
-            for (const auto& spec : prim.GetPrimStack())
+            if (!isLoaded)
             {
-                auto&& items = spec.GetSpec().GetReferenceList().GetPrependedItems();
-                for (const pxr::SdfReference& reference : items)
+                for (const auto& spec : prim.GetPrimStack())
                 {
-                    if (auto assetStage = pxr::UsdStage::Open(reference.GetAssetPath()))
+                    auto&& items = spec.GetSpec().GetReferenceList().GetPrependedItems();
+                    for (const pxr::SdfReference& reference : items)
                     {
-                        auto&& prim = assetStage->GetPrimAtPath(reference.GetPrimPath());
-                        if (pxr::UsdNauAnimationClip clip{ prim })
+                        if (auto assetStage = pxr::UsdStage::Open(reference.GetAssetPath()))
                         {
-                            if (auto clipAsset = compileAnimationTrack(clip, prim))
+                            auto&& prim = assetStage->GetPrimAtPath(reference.GetPrimPath());
+                            if (pxr::UsdNauAnimationClip clip{ prim })
                             {
-                                loadedAsset.addTrack(std::move(clipAsset));
-                                isLoaded = true;
+                                if (auto clipAsset = compileAnimationTrack(clip, prim))
+                                {
+                                    loadedAsset.addTrack(std::move(clipAsset));
+                                    isLoaded = true;
+                                }
+                                break;
                             }
-                            break;
                         }
                     }
                 }
@@ -688,7 +690,7 @@ namespace nau::compilers
         {
             AssetMetaInfo nanimMeta;
             const std::string relativeSourcePath = FileSystemExtensions::getRelativeAssetPath(metaInfo.assetPath, false).string();
-            const std::string sourcePath = std::format("{}+[kfanimation:{}]", relativeSourcePath.c_str(), primToCompile.GetName().GetString());
+            const std::string sourcePath = std::format("{}+[kfanimation]", relativeSourcePath.c_str(), primToCompile.GetName().GetString());
             
             auto id = dbManager.findIf(sourcePath); 
             
@@ -703,12 +705,33 @@ namespace nau::compilers
             nanimMeta.uid = *id;
             nanimMeta.dbPath = (out.filename() / fileName).string().c_str();
             nanimMeta.sourcePath = sourcePath.c_str();
+            nanimMeta.kind = "Animation";
 
             auto outFilePath = utils::compilers::ensureOutputPath(outputPath, nanimMeta, "");
 
             if (saveAnimAssetBlk(*usdAnimation, outFilePath.string()))
             {
                 dbManager.addOrReplace(nanimMeta);
+
+                for (auto& track : usdAnimation->tracks)
+                {
+                    const std::string trackSourcePath = std::format("{}+[kfanimation:{}]", 
+                        relativeSourcePath.c_str(), 
+                        track->descriptor.name.c_str());
+
+                    auto trackId = dbManager.findIf(trackSourcePath);
+
+                    if (trackId.isError())
+                    {
+                        trackId = Uid::generate();
+                    }
+
+                    AssetMetaInfo trackMeta;
+                    trackMeta.uid = *trackId;
+                    trackMeta.dbPath = nanimMeta.dbPath; // the same file for all tracks
+                    trackMeta.sourcePath = trackSourcePath.c_str();
+                    dbManager.addOrReplace(trackMeta);
+                }
 
                 return nanimMeta;
             }

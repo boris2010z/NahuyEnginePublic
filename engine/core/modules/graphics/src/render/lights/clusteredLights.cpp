@@ -143,8 +143,7 @@ namespace nau::render
 
         closeOmni();
         closeSpot();
-        closeDebugOmni();
-        closeDebugSpot();
+        closeLightMaterial();
         shaders::overrides::destroy(depthBiasOverrideId);
     }
 
@@ -186,11 +185,11 @@ namespace nau::render
 
         if (!renderFarOmniLights.empty())
         {
-            renderPrims(pointLightsMat, "Omnilight", visibleFarOmniLightsCB.get(), renderFarOmniLights.size(), 0, v_count, 0, f_count);
+            renderPrims(lightsMat, "Omnilight", visibleFarOmniLightsCB.get(), renderFarOmniLights.size(), 0, v_count, 0, f_count);
         }
         if (!renderFarSpotLights.empty())
         {
-            renderPrims(spotLightsMat, "Spotlight", visibleFarSpotLightsCB.get(), renderFarSpotLights.size(), v_count, 5, f_count * 3,
+            renderPrims(lightsMat, "Spotlight", visibleFarSpotLightsCB.get(), renderFarSpotLights.size(), v_count, 5, f_count * 3,
                         6);
         }
         resetBuffers();
@@ -330,6 +329,9 @@ namespace nau::render
                                             SpotLightsManager::mask_type_t spot_light_mask,
                                             OmniLightsManager::mask_type_t omni_light_mask)
     {
+        debugOmniLights.clear();
+        debugSpotLights.clear();
+
         // TIME_PROFILE(cullFrustumLights);
         buffersFilled = false;
         NauFrustum frustum(globtm);
@@ -337,7 +339,6 @@ namespace nau::render
 
         // separate to closer than maxClusteredDist and farther to render others deferred way
         BBox3 far_box, near_box;
-        NAU_ASSERT(sizeof(RenderOmniLight) == sizeof(OmniLightsManager::RawLight));
 
         visibleOmniLightsIdSet.reset();
         visibleOmniLightsId.clear();
@@ -432,6 +433,11 @@ namespace nau::render
             visibleSpotLights[i] = spotLights.getLight(id);
             renderSpotLights[i] = spotLights.getRenderLight(id);
             visibleSpotLightsMasks[i] = spotLights.getLightMask(id);
+
+            if(spotLights.getLight(id).debugDraw)
+            {
+                debugSpotLights.push_back(spotLights.getRenderLight(id));
+            }
         }
         for (int i = 0; i < visibleOmniLightsId.size(); ++i)
         {
@@ -439,17 +445,34 @@ namespace nau::render
             renderOmniLights[i] = omniLights.getRenderLight(id);
             visibleOmniLightsBounds[i] = Vector4(_mm_loadu_ps(reinterpret_cast<float*>(&renderOmniLights[i].posRadius)));
             visibleOmniLightsMasks[i] = omniLights.getLightMask(id);
+
+            if(omniLights.getLight(id).debugDraw)
+            {
+                debugOmniLights.push_back(omniLights.getRenderLight(id));
+            }
         }
 
         visibleFarSpotLightsId.resize(std::min<int>(visibleFarSpotLightsId.size(), MAX_VISIBLE_FAR_LIGHTS));
         renderFarSpotLights.resize(visibleFarSpotLightsId.size());
         for (int i = 0, e = visibleFarSpotLightsId.size(); i < e; ++i)
+        {
             renderFarSpotLights[i] = spotLights.getRenderLight(visibleFarSpotLightsId[i]);
+            if(spotLights.getLight(visibleFarSpotLightsId[i]).debugDraw)
+            {
+                debugSpotLights.push_back(spotLights.getRenderLight(visibleFarSpotLightsId[i]));
+            }
+        }
 
         visibleFarOmniLightsId.resize(std::min<int>(visibleFarOmniLightsId.size(), MAX_VISIBLE_FAR_LIGHTS));
         renderFarOmniLights.resize(visibleFarOmniLightsId.size());
         for (int i = 0, e = visibleFarOmniLightsId.size(); i < e; ++i)
+        {
             renderFarOmniLights[i] = omniLights.getRenderLight(visibleFarOmniLightsId[i]);
+            if(omniLights.getLight(visibleFarOmniLightsId[i]).debugDraw)
+            {
+                debugOmniLights.push_back(omniLights.getRenderLight(visibleFarOmniLightsId[i]));
+            }
+        }
 
         // clusteredCullLights(view, proj, znear, 1, 500, (Vector4*)visibleOmniLights.data(),
         //   elem_size(visibleOmniLights)/sizeof(Vector4), visibleOmniLights.size(), 2);
@@ -744,15 +767,16 @@ namespace nau::render
         */
         initClustered(frame_initial_lights_count);
         initConeSphere();
-        co_await initSpot();
-        co_await initOmni();
-        co_await initDebugOmni();
-        co_await initDebugSpot();
+        co_await initLightMaterial();
 
         visibleOmniLightsCB.reallocate(0, MAX_OMNI_LIGHTS, "omni_lights");
         visibleOmniLightsCB.update(nullptr, 0);
         visibleSpotLightsCB.reallocate(0, MAX_SPOT_LIGHTS, "spot_lights");
         visibleSpotLightsCB.update(nullptr, 0);
+        debugOmniLightsCB.reallocate(0, MAX_OMNI_LIGHTS, "omni_lights");
+        debugOmniLightsCB.update(nullptr, 0);
+        debugSpotLightsCB.reallocate(0, MAX_SPOT_LIGHTS, "spot_lights");
+        debugSpotLightsCB.update(nullptr, 0);
 
         /* TODO: support Shadows
         if (lightShadows)
@@ -1019,54 +1043,17 @@ namespace nau::render
         indices[2] = v_count + 4;
     }
 
-    async::Task<> ClusteredLights::initOmni()
-    {
-        closeOmni();
-        MaterialAssetRef omniLightsMatRef = AssetPath{"file:/res/materials/deffered_light.nmat_json"};
-        pointLightsMat = co_await omniLightsMatRef.getAssetViewTyped<MaterialAssetView>();
-        NAU_ASSERT(pointLightsMat);
-    }
-
-    async::Task<> ClusteredLights::initSpot()
+    async::Task<> ClusteredLights::initLightMaterial()
     {
         closeSpot();
         MaterialAssetRef spotLightsMatRef = AssetPath{"file:/res/materials/deffered_light.nmat_json"};
-        spotLightsMat = co_await spotLightsMatRef.getAssetViewTyped<MaterialAssetView>();
-        NAU_ASSERT(spotLightsMat);
+        lightsMat = co_await spotLightsMatRef.getAssetViewTyped<MaterialAssetView>();
+        NAU_ASSERT(lightsMat);
     }
 
-    void ClusteredLights::closeDebugSpot()
+    void ClusteredLights::closeLightMaterial()
     {
-        spotLightsDebugMat = nullptr;
-    }
-
-    void ClusteredLights::closeDebugOmni()
-    {
-        pointLightsDebugMat = nullptr;
-    }
-
-    async::Task<> ClusteredLights::initDebugOmni()
-    {
-        co_return;
-        closeDebugOmni();
-        MaterialAssetRef pointLightsDebugMatRef = AssetPath{"file:/content/materials/pixel_data_extraction.nmat_json"};
-        pointLightsDebugMat = co_await pointLightsDebugMatRef.getAssetViewTyped<MaterialAssetView>();
-        if (!pointLightsDebugMat)
-        {
-            co_return;
-        }
-    }
-
-    async::Task<> ClusteredLights::initDebugSpot()
-    {
-        co_return;
-        closeDebugSpot();
-        MaterialAssetRef spotLightsDebugMatRef = AssetPath{"file:/content/materials/pixel_data_extraction.nmat_json"};
-        spotLightsDebugMat = co_await spotLightsDebugMatRef.getAssetViewTyped<MaterialAssetView>();
-        if (!spotLightsDebugMat)
-        {
-            co_return;
-        }
+        lightsMat = nullptr;
     }
 
     void ClusteredLights::setBuffers()
@@ -1097,60 +1084,33 @@ namespace nau::render
         d3d::drawind_instanced(PRIM_TRILIST, index_start, fcount, 0, inst_count);
     }
 
-    void ClusteredLights::renderDebugOmniLights()
-    {
-        if (pointLightsDebugMat)
-            return;
-        if (getVisibleOmniCount() == 0)
-            return;
-        // TIME_D3D_PROFILE(renderDebugOmniLights);
-
-        // debug("rawLightsIn.size() = {} rawLightsOut.size() = {}", rawLightsIn.size(),rawLightsOut.size());
-        setBuffers();
-        renderPrims(pointLightsDebugMat,
-                    omni_lightsVarId,
-                    visibleOmniLightsCB.get(),
-                    getVisibleClusteredOmniCount(),
-                    0, v_count,
-                    0,
-                    f_count);
-        renderPrims(pointLightsDebugMat,
-                    omni_lightsVarId, visibleFarOmniLightsCB.get(), getVisibleNotClusteredOmniCount(), 0, v_count, 0,
-                    f_count);
-        resetBuffers();
-    }
-
-    void ClusteredLights::renderDebugSpotLights()
-    {
-        if (!spotLightsDebugMat)
-            return;
-        if (getVisibleSpotsCount() == 0)
-            return;
-        // TIME_D3D_PROFILE(renderDebugSpotLights);
-
-        // debug("rawLightsIn.size() = {} rawLightsOut.size() = {}", rawLightsIn.size(),rawLightsOut.size());
-        setBuffers();
-        renderPrims(spotLightsDebugMat, spot_lightsVarId, visibleSpotLightsCB.get(), getVisibleClusteredSpotsCount(), v_count, 5,
-                    f_count * 3, 6);
-        renderPrims(spotLightsDebugMat, spot_lightsVarId, visibleFarSpotLightsCB.get(), getVisibleNotClusteredSpotsCount(), v_count, 5,
-                    f_count * 3, 6);
-        resetBuffers();
-
-#if 0
-  begin_draw_cached_debug_lines(false, false);
-  for (int i = 0; i < visibleSpotLightsId.size(); ++i)
-  {
-    Vector4 sphere = spotLights.getBoundingSphere(visibleSpotLightsId[i]);
-    draw_cached_debug_sphere(Point3::xyz((Vector4&)sphere), ((Vector4&)sphere).getW(), 0xFFFFFF1F);
-  }
-  end_draw_cached_debug_lines();
-#endif
-    }
-
     void ClusteredLights::renderDebugLights()
     {
-        renderDebugSpotLights();
-        renderDebugOmniLights();
+        if (!lightsMat)
+        {
+            return;
+        }
+        if((debugSpotLights.size() + debugOmniLights.size()) == 0)
+        {
+            return;
+        }
+
+        setBuffers();
+
+        if (debugSpotLights.size())
+        {
+            debugSpotLightsCB.reallocate(debugSpotLights.size(), MAX_VISIBLE_FAR_LIGHTS, "far_spot_lights");
+            debugSpotLightsCB.update(debugSpotLights.data(), data_size(debugSpotLights));
+            renderPrims(lightsMat, "SpotlightDebug", debugSpotLightsCB.get(), debugSpotLights.size(), v_count, 5, f_count * 3, 6);
+        }
+        if (debugOmniLights.size())
+        {
+            debugOmniLightsCB.reallocate(debugOmniLights.size(), MAX_VISIBLE_FAR_LIGHTS, "far_omni_lights");
+            debugOmniLightsCB.update(debugOmniLights.data(), data_size(debugOmniLights));
+            renderPrims(lightsMat, "OmnilightDebug", debugOmniLightsCB.get(), debugOmniLights.size(), 0, v_count, 0, f_count);
+        }
+
+        resetBuffers();
     }
 
     void ClusteredLights::renderDebugLightsBboxes()

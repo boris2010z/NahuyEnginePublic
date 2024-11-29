@@ -24,6 +24,30 @@
       "cullMode": "None",
       "depthMode": "ReadOnly",
       "blendMode": "Additive"
+    },
+    "OmnilightDebug": {
+      "properties": {
+        "sampl": 0,
+      },
+      "shaders": [
+        "file:/res/shaders/cache/shader_cache.nsbc+[debug_lights_shader.vs.debug_point_lights_vs]",
+        "file:/res/shaders/cache/shader_cache.nsbc+[debug_lights_shader.ps.debug_point_lights_ps]"
+      ],
+      "cullMode": "None",
+      "depthMode": "ReadOnly",
+      "blendMode": "Opaque"
+    },
+    "SpotlightDebug": {
+      "properties": {
+        "sampl": 0
+      },
+      "shaders": [
+        "file:/res/shaders/cache/shader_cache.nsbc+[debug_lights_shader.vs.debug_spot_lights_vs]",
+        "file:/res/shaders/cache/shader_cache.nsbc+[debug_lights_shader.ps.debug_spot_lights_ps]"
+      ],
+      "cullMode": "None",
+      "depthMode": "ReadOnly",
+      "blendMode": "Opaque"
     }
   }
 }
